@@ -45,5 +45,7 @@ spring:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
 server:
   port: 8080
-
 ---
+
+jira:
+  site-url: ${JIRA_SITE_URL}

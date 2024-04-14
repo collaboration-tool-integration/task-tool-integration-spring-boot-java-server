@@ -19,6 +19,11 @@ configurations {
 
 repositories {
     mavenCentral()
+
+    // Atlassian Maven Repository
+    maven {
+        url "https://packages.atlassian.com/mvn/maven-external/"
+    }
 }
 
 dependencies {
@@ -33,6 +38,10 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'io.projectreactor:reactor-test'
     testImplementation 'org.springframework.batch:spring-batch-test'
+
+    // Jira
+    implementation 'com.atlassian.adf:adf-builder-java:0.26.0'
+    implementation 'com.atlassian.adf:adf-builder-java-jackson2:0.26.0'
 }
 
 tasks.named('test') {
