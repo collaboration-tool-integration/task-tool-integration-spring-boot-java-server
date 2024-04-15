@@ -22,9 +22,11 @@ public class GetAllUpdatesMondayRes {
 
     @Getter
     public static class Update {
+        private String id;
         private Creator creator;
         private String text_body;
         private Date created_at;
+        private Date updated_at;
         private List<Reply> replies;
     }
 
@@ -36,7 +38,9 @@ public class GetAllUpdatesMondayRes {
 
     @Getter
     public static class Reply {
+        private String id;
         private Creator creator;
         private Date created_at;
+        private Date updated_at;
     }
 }

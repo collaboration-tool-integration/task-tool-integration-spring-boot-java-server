@@ -1,9 +1,13 @@
 package com.pbl.tasktoolintegration.monday;
 
+import com.pbl.tasktoolintegration.monday.entity.MondayComment;
+import com.pbl.tasktoolintegration.monday.entity.MondayUpdate;
 import com.pbl.tasktoolintegration.monday.entity.MondayUser;
 import com.pbl.tasktoolintegration.monday.model.GetAllUpdatesMondayRes;
 import com.pbl.tasktoolintegration.monday.model.GetAllUsersMondayRes;
 import com.pbl.tasktoolintegration.monday.model.GetUsersAverageResponseTimeDto;
+import com.pbl.tasktoolintegration.monday.repository.MondayCommentRepository;
+import com.pbl.tasktoolintegration.monday.repository.MondayUpdateRepository;
 import com.pbl.tasktoolintegration.monday.repository.MondayUserRepository;
 import graphql.kickstart.spring.webclient.boot.GraphQLRequest;
 import java.util.ArrayList;
@@ -15,14 +19,18 @@ import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional
 public class MondayService {
     private final WebClient mondayWebClient;
     private final MondayUserRepository mondayUserRepository;
+    private final MondayUpdateRepository mondayUpdateRepository;
+    private final MondayCommentRepository mondayCommentRepository;
 
     private List<String> getMentionedUsersInString(String text) {
         List<String> mentionedUsers = new ArrayList<>();
@@ -57,6 +65,43 @@ public class MondayService {
         }
     }
 
+    public void syncUpdates() {
+        GetAllUpdatesMondayRes mondayUpdates = getMondayUpdates();
+
+        for (GetAllUpdatesMondayRes.Update update : mondayUpdates.getData().getUpdates()) {
+            Optional<MondayUpdate> mondayUpdate = mondayUpdateRepository.findById(update.getId());
+            if (mondayUpdate.isPresent()) {
+                if (mondayUpdate.get().getUpdatedAt().before(update.getUpdated_at())) {
+                    mondayUpdate.get().updateContent(update.getText_body());
+                    mondayUpdate.get().updateUpdatedAt(update.getUpdated_at());
+                    mondayUpdateRepository.save(mondayUpdate.get());
+                }
+            } else {
+                mondayUpdateRepository.save(MondayUpdate.builder()
+                    .id(update.getId())
+                    .content(update.getText_body())
+                    .createdAt(update.getCreated_at())
+                    .updatedAt(update.getUpdated_at())
+                    .creator(mondayUserRepository.findById(update.getCreator().getId()).get())
+                    .build());
+            }
+
+            // 댓글 업데이트
+            for (GetAllUpdatesMondayRes.Reply reply : update.getReplies()) {
+                Optional<MondayComment> mondayComment = mondayCommentRepository.findById(reply.getId());
+                if (!mondayComment.isPresent()) {
+                    mondayCommentRepository.save(MondayComment.builder()
+                        .id(reply.getId())
+                        .createdAt(reply.getCreated_at())
+                        .creator(mondayUserRepository.findById(reply.getCreator().getId()).get())
+                        .update(mondayUpdateRepository.findById(update.getId()).get())
+                        .build());
+                }
+            }
+        }
+    }
+
+    // TODO: page 처리, 삭제 대응
     public GetAllUsersMondayRes getMondayUsers() {
         GraphQLRequest userRequest = GraphQLRequest.builder()
             .query(ModnayQuery.GET_ALL_USERS.getQuery())
@@ -68,6 +113,7 @@ public class MondayService {
             .block();
     }
 
+    // TODO: page 처리, 삭제 대응
     public GetAllUpdatesMondayRes getMondayUpdates() {
         GraphQLRequest updateRequest = GraphQLRequest.builder()
             .query(ModnayQuery.GET_ALL_UPDATES.getQuery())

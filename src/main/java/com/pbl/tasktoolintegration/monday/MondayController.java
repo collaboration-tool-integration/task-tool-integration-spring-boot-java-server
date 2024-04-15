@@ -31,4 +31,15 @@ public class MondayController {
 
         return new ResponseEntity(response, HttpStatus.OK);
     }
+
+//    @GetMapping("/batch/response-time")
+//    public ResponseEntity<List<GetUserResponseTimeRes>> getBatchUserResponseTime(){
+//        List<GetUsersAverageResponseTimeDto> usersAverageResponseTime = mondayService.getBatchUsersAverageResponseTime();
+//
+//        List<GetUserResponseTimeRes> response = usersAverageResponseTime.stream()
+//            .map(GetUserResponseTimeRes::from)
+//            .toList();
+//
+//        return new ResponseEntity(response, HttpStatus.OK);
+//    }
 }
