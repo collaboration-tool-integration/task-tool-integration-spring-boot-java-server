@@ -8,7 +8,13 @@ import lombok.Setter;
 @Setter
 @Builder
 public class GetUserResponseTimeRes {
-    private String userId;
     private String username;
     private String responseTimeSec;
+
+    public static GetUserResponseTimeRes from(GetUsersAverageResponseTimeDto dto) {
+        return GetUserResponseTimeRes.builder()
+            .username(dto.getUsername())
+            .responseTimeSec(String.valueOf(dto.getAverageResponseTime()))
+            .build();
+    }
 }

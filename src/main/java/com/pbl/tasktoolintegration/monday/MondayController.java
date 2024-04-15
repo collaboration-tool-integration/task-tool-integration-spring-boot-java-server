@@ -1,6 +1,7 @@
 package com.pbl.tasktoolintegration.monday;
 
 import com.pbl.tasktoolintegration.monday.model.GetUserResponseTimeRes;
+import com.pbl.tasktoolintegration.monday.model.GetUsersAverageResponseTimeDto;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +23,12 @@ public class MondayController {
 
     @GetMapping("/response-time")
     public ResponseEntity<List<GetUserResponseTimeRes>> getUserResponseTime(){
-        mondayService.queryTest();
-        return new ResponseEntity(null, HttpStatus.OK);
+        List<GetUsersAverageResponseTimeDto> usersAverageResponseTime = mondayService.getUsersAverageResponseTime();
+
+        List<GetUserResponseTimeRes> response = usersAverageResponseTime.stream()
+            .map(GetUserResponseTimeRes::from)
+            .toList();
+
+        return new ResponseEntity(response, HttpStatus.OK);
     }
 }
