@@ -1,14 +1,17 @@
 package com.pbl.tasktoolintegration.monday;
 
+import com.pbl.tasktoolintegration.monday.entity.MondayUser;
 import com.pbl.tasktoolintegration.monday.model.GetAllUpdatesMondayRes;
 import com.pbl.tasktoolintegration.monday.model.GetAllUsersMondayRes;
 import com.pbl.tasktoolintegration.monday.model.GetUsersAverageResponseTimeDto;
+import com.pbl.tasktoolintegration.monday.repository.MondayUserRepository;
 import graphql.kickstart.spring.webclient.boot.GraphQLRequest;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,6 +22,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 @Slf4j
 public class MondayService {
     private final WebClient mondayWebClient;
+    private final MondayUserRepository mondayUserRepository;
 
     private List<String> getMentionedUsersInString(String text) {
         List<String> mentionedUsers = new ArrayList<>();
@@ -36,16 +40,48 @@ public class MondayService {
         return (int) (diff / 1000);
     }
 
-    public List<GetUsersAverageResponseTimeDto> getUsersAverageResponseTime() {
-        // 전체 유저 조회
+    public void syncUsers() {
+        GetAllUsersMondayRes mondayUsers = getMondayUsers();
+
+        for (GetAllUsersMondayRes.User user : mondayUsers.getData().getUsers()) {
+            Optional<MondayUser> mondayUser = mondayUserRepository.findById(user.getId());
+            if (mondayUser.isPresent()) {
+                mondayUser.get().updateName(user.getName());
+                mondayUserRepository.save(mondayUser.get());
+            } else {
+                mondayUserRepository.save(MondayUser.builder()
+                    .id(user.getId())
+                    .name(user.getName())
+                    .build());
+            }
+        }
+    }
+
+    public GetAllUsersMondayRes getMondayUsers() {
         GraphQLRequest userRequest = GraphQLRequest.builder()
             .query(ModnayQuery.GET_ALL_USERS.getQuery())
             .build();
-        GetAllUsersMondayRes mondayUsers = mondayWebClient.post()
+        return mondayWebClient.post()
             .bodyValue(userRequest.getRequestBody())
             .retrieve()
             .bodyToMono(GetAllUsersMondayRes.class)
             .block();
+    }
+
+    public GetAllUpdatesMondayRes getMondayUpdates() {
+        GraphQLRequest updateRequest = GraphQLRequest.builder()
+            .query(ModnayQuery.GET_ALL_UPDATES.getQuery())
+            .build();
+        return mondayWebClient.post()
+            .bodyValue(updateRequest.getRequestBody())
+            .retrieve()
+            .bodyToMono(GetAllUpdatesMondayRes.class)
+            .block();
+    }
+
+    public List<GetUsersAverageResponseTimeDto> getUsersAverageResponseTime() {
+        // 전체 유저 조회
+        GetAllUsersMondayRes mondayUsers = getMondayUsers();
 
         // 유저 이름과 1차 응답 시간을 저장할 맵 생성, 초기화
         Map<String, String> usernameMap = new HashMap<>();
@@ -56,14 +92,7 @@ public class MondayService {
         }
 
         // 모든 업데이트 조회
-        GraphQLRequest updateRequest = GraphQLRequest.builder()
-            .query(ModnayQuery.GET_ALL_UPDATES.getQuery())
-            .build();
-        GetAllUpdatesMondayRes mondayUpdates = mondayWebClient.post()
-            .bodyValue(updateRequest.getRequestBody())
-            .retrieve()
-            .bodyToMono(GetAllUpdatesMondayRes.class)
-            .block();
+        GetAllUpdatesMondayRes mondayUpdates = getMondayUpdates();
 
         for (GetAllUpdatesMondayRes.Update update : mondayUpdates.getData().getUpdates()) {
             // update에 언급된 유저 찾기
