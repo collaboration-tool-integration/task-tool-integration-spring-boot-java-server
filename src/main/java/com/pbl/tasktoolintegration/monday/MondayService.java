@@ -184,4 +184,51 @@ public class MondayService {
 
          return usersAverageResponseTime;
     }
+
+    public List<GetUsersAverageResponseTimeDto> getBatchUsersAverageResponseTime() {
+        List<MondayUser> mondayUsers = mondayUserRepository.findAll();
+
+        Map<String, List<Integer>> userResponseTimeMap = new HashMap<>();
+        for (MondayUser user : mondayUsers) {
+            userResponseTimeMap.put(user.getId(), new ArrayList<>());
+        }
+
+        List<MondayUpdate> mondayUpdates = mondayUpdateRepository.findAll();
+
+        for (MondayUpdate update : mondayUpdates) {
+            List<String> mentionedUsers = getMentionedUsersInString(update.getContent());
+            if (mentionedUsers.size() > 0) {
+                Date startDate = update.getCreatedAt();
+                List<String> leftUsers = new ArrayList<>(mentionedUsers);
+                List<MondayComment> mondayComments = mondayCommentRepository.findByUpdate(update);
+                for (MondayComment comment : mondayComments) {
+                    if (mentionedUsers.contains(comment.getCreator().getName())) {
+                        int diffSeconds = calculateResponseTime(startDate, comment.getCreatedAt());
+                        userResponseTimeMap.get(comment.getCreator().getId()).add(diffSeconds);
+                        leftUsers.remove(comment.getCreator().getName());
+                    }
+                }
+            }
+        }
+
+        List<GetUsersAverageResponseTimeDto> usersAverageResponseTime = new ArrayList<>();
+        for (String userId : userResponseTimeMap.keySet()) {
+            List<Integer> responseTimes = userResponseTimeMap.get(userId);
+            // 응답한 기록이 없는 경우 분석 불가
+            if (responseTimes.size() == 0) {
+                continue;
+            }
+
+            int sum = 0;
+            for (int responseTime : responseTimes) {
+                sum += responseTime;
+            }
+            int average = sum / responseTimes.size();
+            usersAverageResponseTime.add(GetUsersAverageResponseTimeDto.builder()
+                .username(mondayUserRepository.findById(userId).get().getName())
+                .averageResponseTime(average)
+                .build());
+        }
+        return usersAverageResponseTime;
+    }
 }
