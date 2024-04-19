@@ -1,11 +1,19 @@
 package com.pbl.tasktoolintegration.monday;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pbl.tasktoolintegration.monday.entity.MondayComment;
 import com.pbl.tasktoolintegration.monday.entity.MondayUpdate;
 import com.pbl.tasktoolintegration.monday.entity.MondayUser;
+import com.pbl.tasktoolintegration.monday.model.GetAllBoardsWithColumnsMondayRes;
 import com.pbl.tasktoolintegration.monday.model.GetAllUpdatesMondayRes;
 import com.pbl.tasktoolintegration.monday.model.GetAllUsersMondayRes;
+import com.pbl.tasktoolintegration.monday.model.GetUserAssignedItemsMondayRes;
+import com.pbl.tasktoolintegration.monday.model.GetUserExpiredItemDto;
 import com.pbl.tasktoolintegration.monday.model.GetUsersAverageResponseTimeDto;
+import com.pbl.tasktoolintegration.monday.model.MondayStatusColumnInfo;
+import com.pbl.tasktoolintegration.monday.model.MondayStatusInfo;
+import com.pbl.tasktoolintegration.monday.model.MondayTimelineColumnInfo;
 import com.pbl.tasktoolintegration.monday.repository.MondayCommentRepository;
 import com.pbl.tasktoolintegration.monday.repository.MondayUpdateRepository;
 import com.pbl.tasktoolintegration.monday.repository.MondayUserRepository;
@@ -27,16 +35,19 @@ import org.springframework.web.reactive.function.client.WebClient;
 @Slf4j
 @Transactional
 public class MondayService {
+
     private final WebClient mondayWebClient;
     private final MondayUserRepository mondayUserRepository;
     private final MondayUpdateRepository mondayUpdateRepository;
     private final MondayCommentRepository mondayCommentRepository;
+    private final ObjectMapper objectMapper;
 
     private List<String> getMentionedUsersInString(String text) {
         List<String> mentionedUsers = new ArrayList<>();
         String[] words = text.split(" ");
         for (String word : words) {
-            if (word.length() >= 1 && word.charAt(0) == '@' && mentionedUsers.contains(word.substring(1)) == false) {
+            if (word.length() >= 1 && word.charAt(0) == '@'
+                && mentionedUsers.contains(word.substring(1)) == false) {
                 mentionedUsers.add(word.substring(1));
             }
         }
@@ -88,7 +99,8 @@ public class MondayService {
 
             // 댓글 업데이트
             for (GetAllUpdatesMondayRes.Reply reply : update.getReplies()) {
-                Optional<MondayComment> mondayComment = mondayCommentRepository.findById(reply.getId());
+                Optional<MondayComment> mondayComment = mondayCommentRepository.findById(
+                    reply.getId());
                 if (!mondayComment.isPresent()) {
                     mondayCommentRepository.save(MondayComment.builder()
                         .id(reply.getId())
@@ -164,25 +176,25 @@ public class MondayService {
         }
 
         List<GetUsersAverageResponseTimeDto> usersAverageResponseTime = new ArrayList<>();
-         for (String userId : userResponseTimeMap.keySet()) {
-             List<Integer> responseTimes = userResponseTimeMap.get(userId);
-             // 응답한 기록이 없는 경우 분석 불가
-             if (responseTimes.size() == 0) {
-                 continue;
-             }
+        for (String userId : userResponseTimeMap.keySet()) {
+            List<Integer> responseTimes = userResponseTimeMap.get(userId);
+            // 응답한 기록이 없는 경우 분석 불가
+            if (responseTimes.size() == 0) {
+                continue;
+            }
 
-             int sum = 0;
-             for (int responseTime : responseTimes) {
-                 sum += responseTime;
-             }
-             int average = sum / responseTimes.size();
-                usersAverageResponseTime.add(GetUsersAverageResponseTimeDto.builder()
-                    .username(usernameMap.get(userId))
-                    .averageResponseTime(average)
-                    .build());
-         }
+            int sum = 0;
+            for (int responseTime : responseTimes) {
+                sum += responseTime;
+            }
+            int average = sum / responseTimes.size();
+            usersAverageResponseTime.add(GetUsersAverageResponseTimeDto.builder()
+                .username(usernameMap.get(userId))
+                .averageResponseTime(average)
+                .build());
+        }
 
-         return usersAverageResponseTime;
+        return usersAverageResponseTime;
     }
 
     public List<GetUsersAverageResponseTimeDto> getBatchUsersAverageResponseTime() {
@@ -230,5 +242,119 @@ public class MondayService {
                 .build());
         }
         return usersAverageResponseTime;
+    }
+
+    public GetUserAssignedItemsMondayRes getUserAssignedItems(String boardId,
+        String assignedColumnId, String assignedColumnValue, String timelineColumnId,
+        String statusColumnId) {
+        GraphQLRequest userAssignedItemsRequest = GraphQLRequest.builder()
+            .query(String.format(ModnayQuery.GET_USER_ASSIGNED_ITEMS.getQuery(), boardId,
+                assignedColumnId, assignedColumnValue, timelineColumnId, statusColumnId))
+            .build();
+
+        return mondayWebClient.post()
+            .bodyValue(userAssignedItemsRequest.getRequestBody())
+            .retrieve()
+            .bodyToMono(GetUserAssignedItemsMondayRes.class)
+            .onErrorReturn(GetUserAssignedItemsMondayRes.builder()
+                .data(GetUserAssignedItemsMondayRes.Data.builder()
+                    .items_page_by_column_values(
+                        GetUserAssignedItemsMondayRes.ItemPageByColumnValues.builder()
+                            .items(new ArrayList<>())
+                            .build())
+                    .build())
+                .build())
+            .block();
+    }
+
+    public GetAllBoardsWithColumnsMondayRes getAllBoardsWithColumns() {
+        GraphQLRequest boardsRequest = GraphQLRequest.builder()
+            .query(ModnayQuery.GET_ALL_BOARDS_WITH_COLUMNS.getQuery())
+            .build();
+
+        return mondayWebClient.post()
+            .bodyValue(boardsRequest.getRequestBody())
+            .retrieve()
+            .bodyToMono(GetAllBoardsWithColumnsMondayRes.class)
+            .block();
+    }
+
+    public List<GetUserExpiredItemDto> getUsersExpiredItem() throws JsonProcessingException {
+        GetAllUsersMondayRes mondayUsers = getMondayUsers();
+        GetAllBoardsWithColumnsMondayRes mondayBoards = getAllBoardsWithColumns();
+        Map<String, Integer> userExpiredItemCount = new HashMap<>();
+
+        // 동명이인 케이스 제외하기 때문에 이름을 키값으로 설정
+        for (GetAllUsersMondayRes.User user : mondayUsers.getData().getUsers()) {
+            userExpiredItemCount.put(user.getName(), 0);
+        }
+
+        for (GetAllBoardsWithColumnsMondayRes.Board board : mondayBoards.getData().getBoards()) {
+            String assigneeColumnId = "";
+            String deadlineColumnId = "";
+            String statusColumnId = "";
+            Integer completeStatusIndex = 0;
+            for (GetAllBoardsWithColumnsMondayRes.Column column : board.getColumns()) {
+                if (column.getTitle().equals("담당자")) {
+                    assigneeColumnId = column.getId();
+                    continue;
+                }
+
+                if (column.getTitle().equals("데드라인")) {
+                    deadlineColumnId = column.getId();
+                    continue;
+                }
+
+                if (column.getTitle().equals("상태")) {
+                    statusColumnId = column.getId();
+                    MondayStatusInfo statusInfo = objectMapper.readValue(column.getSettings_str(),
+                        MondayStatusInfo.class);
+                    for (String key : statusInfo.getLabels().keySet()) {
+                        if (statusInfo.getLabels().get(key).equals("완료")) {
+                            completeStatusIndex = Integer.parseInt(key);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            for (String username : userExpiredItemCount.keySet()) {
+                GetUserAssignedItemsMondayRes mondayItems = getUserAssignedItems(board.getId(),
+                    assigneeColumnId, username, deadlineColumnId, statusColumnId);
+                for (GetUserAssignedItemsMondayRes.Item item : mondayItems.getData()
+                    .getItems_page_by_column_values().getItems()) {
+                    Date deadline = null;
+                    boolean isComplete = true;
+                    for (GetUserAssignedItemsMondayRes.ColumnValue columnValue : item.getColumn_values()) {
+                        // objectMapper.readValue(columnValue.getValue(), MondayStatusColumnInfo.class)
+                        // objectMapper.readValue(columnValue.getValue(), MondayTimelineColumnInfo.class)
+                        if (columnValue.getId().equals(deadlineColumnId)) {
+                            deadline = objectMapper.readValue(columnValue.getValue(),
+                                MondayTimelineColumnInfo.class).getTo();
+                        }
+
+                        if (columnValue.getId().equals(statusColumnId)) {
+                            Integer statusIndex = objectMapper.readValue(columnValue.getValue(),
+                                MondayStatusColumnInfo.class).getIndex();
+                            if (statusIndex != completeStatusIndex) {
+                                isComplete = false;
+                            }
+                        }
+                    }
+                    if (isComplete == false && deadline != null && deadline.before(new Date())) {
+                        userExpiredItemCount.put(username, userExpiredItemCount.get(username) + 1);
+                    }
+                }
+            }
+        }
+
+        List<GetUserExpiredItemDto> userExpiredItems = new ArrayList<>();
+        for (String username : userExpiredItemCount.keySet()) {
+            userExpiredItems.add(GetUserExpiredItemDto.builder()
+                .username(username)
+                .totalExpiredItems(userExpiredItemCount.get(username))
+                .build());
+        }
+        return userExpiredItems;
     }
 }
