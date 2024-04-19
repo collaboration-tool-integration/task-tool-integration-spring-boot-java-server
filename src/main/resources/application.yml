@@ -23,6 +23,8 @@ spring:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
 server:
   port: 9090 # docker desktop과 충돌을 피하기 위해 포트 변경
+monday:
+  key: ${MONDAY_API_KEY}
 
 ---
 
