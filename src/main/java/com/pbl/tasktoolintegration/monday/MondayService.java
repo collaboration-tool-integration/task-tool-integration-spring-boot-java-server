@@ -281,7 +281,9 @@ public class MondayService {
 
     public List<GetUserExpiredItemDto> getUsersExpiredItem() throws JsonProcessingException {
         GetAllUsersMondayRes mondayUsers = getMondayUsers();
+        // 보드와 해당 보드에 존재하는 컬럼에 대한 정보 조회
         GetAllBoardsWithColumnsMondayRes mondayBoards = getAllBoardsWithColumns();
+        // 유저별 만료된 아이템 개수 저장
         Map<String, Integer> userExpiredItemCount = new HashMap<>();
 
         // 동명이인 케이스 제외하기 때문에 이름을 키값으로 설정
@@ -289,27 +291,34 @@ public class MondayService {
             userExpiredItemCount.put(user.getName(), 0);
         }
 
+        // 보드마다 순회하며 계산
         for (GetAllBoardsWithColumnsMondayRes.Board board : mondayBoards.getData().getBoards()) {
+            // 담당자 컬럼, 데드라인 컬럼, 상태 컬럼 id 값 찾기
             String assigneeColumnId = "";
             String deadlineColumnId = "";
             String statusColumnId = "";
+            // 상태 컬럼의 완료 상태 index 찾기
             Integer completeStatusIndex = 0;
             for (GetAllBoardsWithColumnsMondayRes.Column column : board.getColumns()) {
+                // 담당자 컬럼 이름이 "담당자"인 경우로 설정
                 if (column.getTitle().equals("담당자")) {
                     assigneeColumnId = column.getId();
                     continue;
                 }
 
+                // 데드라인 컬럼 이름이 "데드라인"인 경우로 설정
                 if (column.getTitle().equals("데드라인")) {
                     deadlineColumnId = column.getId();
                     continue;
                 }
 
+                // 상태 컬럼 이름이 "상태"인 경우로 설정
                 if (column.getTitle().equals("상태")) {
                     statusColumnId = column.getId();
                     MondayStatusInfo statusInfo = objectMapper.readValue(column.getSettings_str(),
                         MondayStatusInfo.class);
                     for (String key : statusInfo.getLabels().keySet()) {
+                        // 완료 상태 status index 찾기
                         if (statusInfo.getLabels().get(key).equals("완료")) {
                             completeStatusIndex = Integer.parseInt(key);
                             break;
@@ -318,21 +327,24 @@ public class MondayService {
                 }
             }
 
+            // 유저별로 해당 보드에 만료된 아이템 개수 계산
             for (String username : userExpiredItemCount.keySet()) {
                 GetUserAssignedItemsMondayRes mondayItems = getUserAssignedItems(board.getId(),
                     assigneeColumnId, username, deadlineColumnId, statusColumnId);
+
+                // 아이템 순회하며 만료 여부 확인
                 for (GetUserAssignedItemsMondayRes.Item item : mondayItems.getData()
                     .getItems_page_by_column_values().getItems()) {
                     Date deadline = null;
                     boolean isComplete = true;
+
                     for (GetUserAssignedItemsMondayRes.ColumnValue columnValue : item.getColumn_values()) {
-                        // objectMapper.readValue(columnValue.getValue(), MondayStatusColumnInfo.class)
-                        // objectMapper.readValue(columnValue.getValue(), MondayTimelineColumnInfo.class)
+                        // 데드라인 값 조회
                         if (columnValue.getId().equals(deadlineColumnId)) {
                             deadline = objectMapper.readValue(columnValue.getValue(),
                                 MondayTimelineColumnInfo.class).getTo();
                         }
-
+                        // 상태 값 조회
                         if (columnValue.getId().equals(statusColumnId)) {
                             Integer statusIndex = objectMapper.readValue(columnValue.getValue(),
                                 MondayStatusColumnInfo.class).getIndex();
@@ -341,6 +353,7 @@ public class MondayService {
                             }
                         }
                     }
+                    // 완료되지 않았으며 데드라인이 현재 일자 기준으로 지났다면 만료된 아이템으로 판단
                     if (isComplete == false && deadline != null && deadline.before(new Date())) {
                         userExpiredItemCount.put(username, userExpiredItemCount.get(username) + 1);
                     }
