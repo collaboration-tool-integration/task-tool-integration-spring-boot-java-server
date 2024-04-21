@@ -8,6 +8,7 @@ import com.pbl.tasktoolintegration.monday.entity.MondayUser;
 import com.pbl.tasktoolintegration.monday.model.GetAllBoardsWithColumnsMondayRes;
 import com.pbl.tasktoolintegration.monday.model.GetAllUpdatesMondayRes;
 import com.pbl.tasktoolintegration.monday.model.GetAllUsersMondayRes;
+import com.pbl.tasktoolintegration.monday.model.GetStatusColumnIdInBoardWithSuccessIndexDto;
 import com.pbl.tasktoolintegration.monday.model.GetUserAssignedItemsMondayRes;
 import com.pbl.tasktoolintegration.monday.model.GetUserExpiredItemDto;
 import com.pbl.tasktoolintegration.monday.model.GetUsersAverageResponseTimeDto;
@@ -279,6 +280,75 @@ public class MondayService {
             .block();
     }
 
+    private String getAssigneeColumnIdInBoard(GetAllBoardsWithColumnsMondayRes.Board board, String assigneeColumnName) {
+        for (GetAllBoardsWithColumnsMondayRes.Column column : board.getColumns()) {
+            if (column.getTitle().equals(assigneeColumnName)) {
+                return column.getId();
+            }
+        }
+        return "";
+    }
+
+    private String getDeadlineColumnIdInBoard(GetAllBoardsWithColumnsMondayRes.Board board, String deadlineColumnName) {
+        for (GetAllBoardsWithColumnsMondayRes.Column column : board.getColumns()) {
+            if (column.getTitle().equals(deadlineColumnName)) {
+                return column.getId();
+            }
+        }
+        return "";
+    }
+
+    private GetStatusColumnIdInBoardWithSuccessIndexDto getStatusColumnIdInBoardWithSuccessIndex(GetAllBoardsWithColumnsMondayRes.Board board, String statusColumnName, String completeStatusName) {
+        GetStatusColumnIdInBoardWithSuccessIndexDto statusColumnIdWithSuccessIndex = GetStatusColumnIdInBoardWithSuccessIndexDto.builder()
+            .statusColumnId("")
+            .completeStatusIndex(0)
+            .build();
+        for (GetAllBoardsWithColumnsMondayRes.Column column : board.getColumns()) {
+            if (column.getTitle().equals(statusColumnName)) {
+                statusColumnIdWithSuccessIndex.setStatusColumnId(column.getId());
+                MondayStatusInfo statusInfo = null;
+                try {
+                    statusInfo = objectMapper.readValue(column.getSettings_str(), MondayStatusInfo.class);
+                } catch (JsonProcessingException e) {
+                    statusInfo.setLabels(new HashMap<>());
+                }
+                for (String key : statusInfo.getLabels().keySet()) {
+                    if (statusInfo.getLabels().get(key).equals(completeStatusName)) {
+                        statusColumnIdWithSuccessIndex.setCompleteStatusIndex(Integer.parseInt(key));
+                        break;
+                    }
+                }
+            }
+        }
+        return statusColumnIdWithSuccessIndex;
+    }
+
+    private boolean isExpiredItem(GetUserAssignedItemsMondayRes.Item item, String deadlineColumnId, String statusColumnId) throws JsonProcessingException {
+        Date deadline = null;
+        boolean isComplete = true;
+
+        for (GetUserAssignedItemsMondayRes.ColumnValue columnValue : item.getColumn_values()) {
+            // 데드라인 값 조회
+            if (columnValue.getId().equals(deadlineColumnId)) {
+                deadline = objectMapper.readValue(columnValue.getValue(),
+                    MondayTimelineColumnInfo.class).getTo();
+            }
+            // 상태 값 조회
+            if (columnValue.getId().equals(statusColumnId)) {
+                Integer statusIndex = objectMapper.readValue(columnValue.getValue(),
+                    MondayStatusColumnInfo.class).getIndex();
+                if (statusIndex != 1) {
+                    isComplete = false;
+                }
+            }
+        }
+        // 완료되지 않았으며 데드라인이 현재 일자 기준으로 지났다면 만료된 아이템으로 판단
+        if (isComplete == false && deadline != null && deadline.before(new Date())) {
+            return true;
+        }
+        return false;
+    }
+
     public List<GetUserExpiredItemDto> getUsersExpiredItem() throws JsonProcessingException {
         GetAllUsersMondayRes mondayUsers = getMondayUsers();
         // 보드와 해당 보드에 존재하는 컬럼에 대한 정보 조회
@@ -294,38 +364,12 @@ public class MondayService {
         // 보드마다 순회하며 계산
         for (GetAllBoardsWithColumnsMondayRes.Board board : mondayBoards.getData().getBoards()) {
             // 담당자 컬럼, 데드라인 컬럼, 상태 컬럼 id 값 찾기
-            String assigneeColumnId = "";
-            String deadlineColumnId = "";
-            String statusColumnId = "";
-            // 상태 컬럼의 완료 상태 index 찾기
-            Integer completeStatusIndex = 0;
-            for (GetAllBoardsWithColumnsMondayRes.Column column : board.getColumns()) {
-                // 담당자 컬럼 이름이 "담당자"인 경우로 설정
-                if (column.getTitle().equals("담당자")) {
-                    assigneeColumnId = column.getId();
-                    continue;
-                }
-
-                // 데드라인 컬럼 이름이 "데드라인"인 경우로 설정
-                if (column.getTitle().equals("데드라인")) {
-                    deadlineColumnId = column.getId();
-                    continue;
-                }
-
-                // 상태 컬럼 이름이 "상태"인 경우로 설정
-                if (column.getTitle().equals("상태")) {
-                    statusColumnId = column.getId();
-                    MondayStatusInfo statusInfo = objectMapper.readValue(column.getSettings_str(),
-                        MondayStatusInfo.class);
-                    for (String key : statusInfo.getLabels().keySet()) {
-                        // 완료 상태 status index 찾기
-                        if (statusInfo.getLabels().get(key).equals("완료")) {
-                            completeStatusIndex = Integer.parseInt(key);
-                            break;
-                        }
-                    }
-                }
-            }
+            String assigneeColumnId = getAssigneeColumnIdInBoard(board, "담당자");
+            String deadlineColumnId = getDeadlineColumnIdInBoard(board, "데드라인");
+            // 상태 컬럼 id 값, 완료 상태 index 찾기
+            GetStatusColumnIdInBoardWithSuccessIndexDto statusColumnInfo = getStatusColumnIdInBoardWithSuccessIndex(board, "상태", "완료");
+            String statusColumnId = statusColumnInfo.getStatusColumnId();
+            Integer completeStatusIndex = statusColumnInfo.getCompleteStatusIndex();
 
             // 유저별로 해당 보드에 만료된 아이템 개수 계산
             for (String username : userExpiredItemCount.keySet()) {
@@ -335,26 +379,7 @@ public class MondayService {
                 // 아이템 순회하며 만료 여부 확인
                 for (GetUserAssignedItemsMondayRes.Item item : mondayItems.getData()
                     .getItems_page_by_column_values().getItems()) {
-                    Date deadline = null;
-                    boolean isComplete = true;
-
-                    for (GetUserAssignedItemsMondayRes.ColumnValue columnValue : item.getColumn_values()) {
-                        // 데드라인 값 조회
-                        if (columnValue.getId().equals(deadlineColumnId)) {
-                            deadline = objectMapper.readValue(columnValue.getValue(),
-                                MondayTimelineColumnInfo.class).getTo();
-                        }
-                        // 상태 값 조회
-                        if (columnValue.getId().equals(statusColumnId)) {
-                            Integer statusIndex = objectMapper.readValue(columnValue.getValue(),
-                                MondayStatusColumnInfo.class).getIndex();
-                            if (statusIndex != completeStatusIndex) {
-                                isComplete = false;
-                            }
-                        }
-                    }
-                    // 완료되지 않았으며 데드라인이 현재 일자 기준으로 지났다면 만료된 아이템으로 판단
-                    if (isComplete == false && deadline != null && deadline.before(new Date())) {
+                    if (isExpiredItem(item, deadlineColumnId, statusColumnId)) {
                         userExpiredItemCount.put(username, userExpiredItemCount.get(username) + 1);
                     }
                 }
