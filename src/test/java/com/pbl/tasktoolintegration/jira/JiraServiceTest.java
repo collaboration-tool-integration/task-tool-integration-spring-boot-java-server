@@ -10,6 +10,7 @@ import com.atlassian.adf.model.node.type.ListItemContent;
 import com.pbl.tasktoolintegration.jira.config.JiraConfiguration;
 import com.pbl.tasktoolintegration.jira.model.dto.JiraComment;
 import com.pbl.tasktoolintegration.jira.model.dto.JiraIssue;
+import com.pbl.tasktoolintegration.jira.model.dto.JiraIssueList;
 import com.pbl.tasktoolintegration.jira.model.dto.JiraUser;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;
@@ -36,34 +37,4 @@ import java.util.stream.Collectors;
 class JiraServiceTest {
     @Autowired
     JiraService jiraService;
-
-    @Test
-    @DisplayName("Jira 단일 이슈 조회 API 호출 결과")
-    void getIssue() {
-        // Given
-        JiraIssue jiraIssue = jiraService.getSingleIssue("KAN-1");
-
-        // Issue Created Time
-        LocalDateTime issueCreatedTime = jiraIssue.getFields().getCreated();
-
-        // Issue Assignee
-        JiraUser assignee = jiraIssue.getFields().getAssignee();
-
-        // Assignee's First Comment
-        JiraComment firstComment = jiraIssue.getFields()
-                .getComment()
-                .getComments()
-                .stream()
-                .filter(jiraComment -> jiraComment.getAuthor() != null && jiraComment.getAuthor().getAccountId().equals(assignee.getAccountId()))
-                .min(Comparator.comparing(JiraComment::getCreated))
-                .orElse(null);
-
-        if (firstComment == null) {
-            log.info("Assignee's Comment Not Found");
-            return;
-        }
-
-        long responseSec = ChronoUnit.SECONDS.between(issueCreatedTime, firstComment.getCreated());
-        log.info("Issue First Response Second: " + responseSec);
-    }
 }

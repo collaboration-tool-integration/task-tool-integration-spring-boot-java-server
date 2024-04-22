@@ -2,6 +2,7 @@ package com.pbl.tasktoolintegration.jira;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -13,11 +14,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class JiraController {
     private final JiraService jiraService;
 
-    @GetMapping("/user")
-    public String getUser() {
-        jiraService.getJiraUserList(0, 1000);
-        jiraService.getSingleIssue("KAN-1");
+    @GetMapping("/user-synced")
+    public ResponseEntity<String> syncJiraUser() {
+        jiraService.syncJiraUser();
+        return ResponseEntity.ok("OK");
+    }
 
-        return "ok";
+    @GetMapping("/issue-synced")
+    public ResponseEntity<String> syncJiraIssue() {
+        jiraService.syncJiraIssue();
+        return ResponseEntity.ok("OK");
     }
 }
