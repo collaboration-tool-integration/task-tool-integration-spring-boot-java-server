@@ -8,9 +8,9 @@ import lombok.NoArgsConstructor;
 public class JiraConstants {
     @AllArgsConstructor
     public enum JiraAccountType {
-        ATLASSIAN("atlassian"),
-        APP("app"),
-        CUSTOMER("customer");
+        atlassian("atlassian"),
+        app("app"),
+        customer("customer");
 
         private String type;
     }

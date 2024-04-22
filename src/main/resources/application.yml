@@ -24,6 +24,14 @@ spring:
 server:
   port: 9090 # docker desktop과 충돌을 피하기 위해 포트 변경
 
+jira:
+  site-url: ${JIRA_SITE_URL}
+  auth-email: ${JIRA_AUTH_EMAIL}
+  api-token: ${JIRA_API_TOKEN}
+
+logging:
+  level:
+    reactor.netty.http.client: DEBUG
 ---
 
 spring:
@@ -46,6 +54,3 @@ spring:
 server:
   port: 8080
 ---
-
-jira:
-  site-url: ${JIRA_SITE_URL}
