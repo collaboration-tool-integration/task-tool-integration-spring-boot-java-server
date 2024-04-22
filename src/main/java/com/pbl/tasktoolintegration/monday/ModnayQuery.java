@@ -11,6 +11,7 @@ public enum ModnayQuery {
     // board id, 담당자 column id, 대상 담당자명, 타임라인 column id, 상태 column id
     // text block -> string.formatted("string")
     GET_USER_ASSIGNED_ITEMS("query { items_page_by_column_values (board_id :%s,  columns :[{column_id :\"%s\", column_values : [\"%s\"]}]) { items { column_values (ids: [\"%s\", \"%s\"]) { id value } } } }"),
+    GET_ALL_ITEMS_WITH_COLUMN("query { boards (ids: %s) { items_page { items  { id column_values (ids: [\"%s\", \"%s\", \"%s\"]) { id value } } } } }"),
     GET_ALL_USERS("query { users { id name } }");
     private String query;
 }

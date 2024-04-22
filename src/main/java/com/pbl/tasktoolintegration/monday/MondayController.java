@@ -57,4 +57,16 @@ public class MondayController {
 
         return new ResponseEntity(response, HttpStatus.OK);
     }
+
+    @GetMapping("/batch/expired-item")
+    public ResponseEntity<List<GetUserExpiredItemRes>> getBatchUserExpiredItem()
+        throws JsonProcessingException {
+        List<GetUserExpiredItemDto> usersExpiredItem = mondayService.getBatchUsersExpiredItem();
+
+        List<GetUserExpiredItemRes> response = usersExpiredItem.stream()
+            .map(GetUserExpiredItemRes::from)
+            .toList();
+
+        return new ResponseEntity(response, HttpStatus.OK);
+    }
 }
