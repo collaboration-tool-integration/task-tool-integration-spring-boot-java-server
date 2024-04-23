@@ -27,5 +27,5 @@ public class JiraIssueResponse extends BaseEntity {
     private JiraUser jiraUser;
 
     @Column(name = "responseSecond")
-    private Integer responseSecond;
+    private Long responseSecond;
 }
