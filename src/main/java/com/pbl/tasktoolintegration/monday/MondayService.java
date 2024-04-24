@@ -472,12 +472,10 @@ public class MondayService {
                     .build());
 
                 for (MondayUser user : assignee) {
-                    if (!mondayUserItemRepository.existsByMondayItemAndMondayUser(savedItem, user)){
-                        mondayUserItemRepository.save(MondayUserItem.builder()
-                            .mondayItem(savedItem)
-                            .mondayUser(user)
-                            .build());
-                    }
+                    mondayUserItemRepository.save(MondayUserItem.builder()
+                        .mondayItem(savedItem)
+                        .mondayUser(user)
+                        .build());
                 }
             }
         }
