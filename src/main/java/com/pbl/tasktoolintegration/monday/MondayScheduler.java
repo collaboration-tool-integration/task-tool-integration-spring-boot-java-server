@@ -12,11 +12,10 @@ public class MondayScheduler {
 
     @Scheduled(fixedRate = 1000 * 60)
     public void syncMondayDate() throws JsonProcessingException {
-        // user의 경우 정보 업데이트 관련 필드가 없어 매번 새로운 정보를 가져옴
-        mondayService.syncUsers();
-
-        mondayService.syncUpdates();
-
-        mondayService.syncItems();
+//        mondayService.syncUsers();
+//
+//        mondayService.syncUpdates();
+//
+//        mondayService.syncItems();
     }
 }
