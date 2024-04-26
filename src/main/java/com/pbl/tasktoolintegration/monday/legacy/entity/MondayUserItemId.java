@@ -1,4 +1,4 @@
-package com.pbl.tasktoolintegration.monday.entity;
+package com.pbl.tasktoolintegration.monday.legacy.entity;
 
 import java.io.Serializable;
 import lombok.EqualsAndHashCode;

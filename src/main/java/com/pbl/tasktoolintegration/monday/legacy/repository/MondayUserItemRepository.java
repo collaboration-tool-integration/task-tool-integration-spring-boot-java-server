@@ -1,8 +1,8 @@
-package com.pbl.tasktoolintegration.monday.repository;
+package com.pbl.tasktoolintegration.monday.legacy.repository;
 
-import com.pbl.tasktoolintegration.monday.entity.MondayItem;
-import com.pbl.tasktoolintegration.monday.entity.MondayUser;
-import com.pbl.tasktoolintegration.monday.entity.MondayUserItem;
+import com.pbl.tasktoolintegration.monday.legacy.entity.MondayItem;
+import com.pbl.tasktoolintegration.monday.legacy.entity.MondayUser;
+import com.pbl.tasktoolintegration.monday.legacy.entity.MondayUserItem;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 

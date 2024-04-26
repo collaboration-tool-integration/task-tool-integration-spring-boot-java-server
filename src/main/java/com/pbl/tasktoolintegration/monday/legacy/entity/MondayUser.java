@@ -1,4 +1,4 @@
-package com.pbl.tasktoolintegration.monday.entity;
+package com.pbl.tasktoolintegration.monday.legacy.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

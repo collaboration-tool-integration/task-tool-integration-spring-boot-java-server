@@ -2,11 +2,11 @@ package com.pbl.tasktoolintegration.monday;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.pbl.tasktoolintegration.monday.entity.MondayComment;
-import com.pbl.tasktoolintegration.monday.entity.MondayItem;
-import com.pbl.tasktoolintegration.monday.entity.MondayUpdate;
-import com.pbl.tasktoolintegration.monday.entity.MondayUser;
-import com.pbl.tasktoolintegration.monday.entity.MondayUserItem;
+import com.pbl.tasktoolintegration.monday.legacy.entity.MondayComment;
+import com.pbl.tasktoolintegration.monday.legacy.entity.MondayItem;
+import com.pbl.tasktoolintegration.monday.legacy.entity.MondayUpdate;
+import com.pbl.tasktoolintegration.monday.legacy.entity.MondayUser;
+import com.pbl.tasktoolintegration.monday.legacy.entity.MondayUserItem;
 import com.pbl.tasktoolintegration.monday.model.GetAllBoardsWithColumnsMondayRes;
 import com.pbl.tasktoolintegration.monday.model.GetAllItemsWithColumnMondayRes;
 import com.pbl.tasktoolintegration.monday.model.GetAllUpdatesMondayRes;
@@ -19,11 +19,11 @@ import com.pbl.tasktoolintegration.monday.model.MondayAssigneeInfo;
 import com.pbl.tasktoolintegration.monday.model.MondayStatusColumnInfo;
 import com.pbl.tasktoolintegration.monday.model.MondayStatusInfo;
 import com.pbl.tasktoolintegration.monday.model.MondayTimelineColumnInfo;
-import com.pbl.tasktoolintegration.monday.repository.MondayCommentRepository;
-import com.pbl.tasktoolintegration.monday.repository.MondayItemRepository;
-import com.pbl.tasktoolintegration.monday.repository.MondayUpdateRepository;
-import com.pbl.tasktoolintegration.monday.repository.MondayUserItemRepository;
-import com.pbl.tasktoolintegration.monday.repository.MondayUserRepository;
+import com.pbl.tasktoolintegration.monday.legacy.repository.MondayCommentRepository;
+import com.pbl.tasktoolintegration.monday.legacy.repository.MondayItemRepository;
+import com.pbl.tasktoolintegration.monday.legacy.repository.MondayUpdateRepository;
+import com.pbl.tasktoolintegration.monday.legacy.repository.MondayUserItemRepository;
+import com.pbl.tasktoolintegration.monday.legacy.repository.MondayUserRepository;
 import graphql.kickstart.spring.webclient.boot.GraphQLRequest;
 import java.util.ArrayList;
 import java.util.Date;
@@ -465,7 +465,7 @@ public class MondayService {
                     }
                 }
 
-                MondayItem savedItem = mondayItemRepository.save(com.pbl.tasktoolintegration.monday.entity.MondayItem.builder()
+                MondayItem savedItem = mondayItemRepository.save(MondayItem.builder()
                     .id(item.getId())
                     .deadLine(deadLine)
                     .isComplete(isComplete)
