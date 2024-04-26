@@ -1,13 +1,28 @@
 package com.pbl.tasktoolintegration.monday;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pbl.tasktoolintegration.monday.entity.MondayComment;
+import com.pbl.tasktoolintegration.monday.entity.MondayItem;
 import com.pbl.tasktoolintegration.monday.entity.MondayUpdate;
 import com.pbl.tasktoolintegration.monday.entity.MondayUser;
+import com.pbl.tasktoolintegration.monday.entity.MondayUserItem;
+import com.pbl.tasktoolintegration.monday.model.GetAllBoardsWithColumnsMondayRes;
+import com.pbl.tasktoolintegration.monday.model.GetAllItemsWithColumnMondayRes;
 import com.pbl.tasktoolintegration.monday.model.GetAllUpdatesMondayRes;
 import com.pbl.tasktoolintegration.monday.model.GetAllUsersMondayRes;
+import com.pbl.tasktoolintegration.monday.model.GetStatusColumnIdInBoardWithSuccessIndexDto;
+import com.pbl.tasktoolintegration.monday.model.GetUserAssignedItemsMondayRes;
+import com.pbl.tasktoolintegration.monday.model.GetUserExpiredItemDto;
 import com.pbl.tasktoolintegration.monday.model.GetUsersAverageResponseTimeDto;
+import com.pbl.tasktoolintegration.monday.model.MondayAssigneeInfo;
+import com.pbl.tasktoolintegration.monday.model.MondayStatusColumnInfo;
+import com.pbl.tasktoolintegration.monday.model.MondayStatusInfo;
+import com.pbl.tasktoolintegration.monday.model.MondayTimelineColumnInfo;
 import com.pbl.tasktoolintegration.monday.repository.MondayCommentRepository;
+import com.pbl.tasktoolintegration.monday.repository.MondayItemRepository;
 import com.pbl.tasktoolintegration.monday.repository.MondayUpdateRepository;
+import com.pbl.tasktoolintegration.monday.repository.MondayUserItemRepository;
 import com.pbl.tasktoolintegration.monday.repository.MondayUserRepository;
 import graphql.kickstart.spring.webclient.boot.GraphQLRequest;
 import java.util.ArrayList;
@@ -27,16 +42,21 @@ import org.springframework.web.reactive.function.client.WebClient;
 @Slf4j
 @Transactional
 public class MondayService {
+
     private final WebClient mondayWebClient;
     private final MondayUserRepository mondayUserRepository;
     private final MondayUpdateRepository mondayUpdateRepository;
     private final MondayCommentRepository mondayCommentRepository;
+    private final ObjectMapper objectMapper;
+    private final MondayItemRepository mondayItemRepository;
+    private final MondayUserItemRepository mondayUserItemRepository;
 
     private List<String> getMentionedUsersInString(String text) {
         List<String> mentionedUsers = new ArrayList<>();
         String[] words = text.split(" ");
         for (String word : words) {
-            if (word.length() >= 1 && word.charAt(0) == '@' && mentionedUsers.contains(word.substring(1)) == false) {
+            if (word.length() >= 1 && word.charAt(0) == '@'
+                && mentionedUsers.contains(word.substring(1)) == false) {
                 mentionedUsers.add(word.substring(1));
             }
         }
@@ -88,7 +108,8 @@ public class MondayService {
 
             // 댓글 업데이트
             for (GetAllUpdatesMondayRes.Reply reply : update.getReplies()) {
-                Optional<MondayComment> mondayComment = mondayCommentRepository.findById(reply.getId());
+                Optional<MondayComment> mondayComment = mondayCommentRepository.findById(
+                    reply.getId());
                 if (!mondayComment.isPresent()) {
                     mondayCommentRepository.save(MondayComment.builder()
                         .id(reply.getId())
@@ -164,25 +185,25 @@ public class MondayService {
         }
 
         List<GetUsersAverageResponseTimeDto> usersAverageResponseTime = new ArrayList<>();
-         for (String userId : userResponseTimeMap.keySet()) {
-             List<Integer> responseTimes = userResponseTimeMap.get(userId);
-             // 응답한 기록이 없는 경우 분석 불가
-             if (responseTimes.size() == 0) {
-                 continue;
-             }
+        for (String userId : userResponseTimeMap.keySet()) {
+            List<Integer> responseTimes = userResponseTimeMap.get(userId);
+            // 응답한 기록이 없는 경우 분석 불가
+            if (responseTimes.size() == 0) {
+                continue;
+            }
 
-             int sum = 0;
-             for (int responseTime : responseTimes) {
-                 sum += responseTime;
-             }
-             int average = sum / responseTimes.size();
-                usersAverageResponseTime.add(GetUsersAverageResponseTimeDto.builder()
-                    .username(usernameMap.get(userId))
-                    .averageResponseTime(average)
-                    .build());
-         }
+            int sum = 0;
+            for (int responseTime : responseTimes) {
+                sum += responseTime;
+            }
+            int average = sum / responseTimes.size();
+            usersAverageResponseTime.add(GetUsersAverageResponseTimeDto.builder()
+                .username(usernameMap.get(userId))
+                .averageResponseTime(average)
+                .build());
+        }
 
-         return usersAverageResponseTime;
+        return usersAverageResponseTime;
     }
 
     public List<GetUsersAverageResponseTimeDto> getBatchUsersAverageResponseTime() {
@@ -230,5 +251,265 @@ public class MondayService {
                 .build());
         }
         return usersAverageResponseTime;
+    }
+
+    public GetUserAssignedItemsMondayRes getUserAssignedItems(String boardId,
+        String assignedColumnId, String assignedColumnValue, String timelineColumnId,
+        String statusColumnId) {
+        GraphQLRequest userAssignedItemsRequest = GraphQLRequest.builder()
+            .query(String.format(ModnayQuery.GET_USER_ASSIGNED_ITEMS.getQuery(), boardId,
+                assignedColumnId, assignedColumnValue, timelineColumnId, statusColumnId))
+            .build();
+
+        return mondayWebClient.post()
+            .bodyValue(userAssignedItemsRequest.getRequestBody())
+            .retrieve()
+            .bodyToMono(GetUserAssignedItemsMondayRes.class)
+            .onErrorReturn(GetUserAssignedItemsMondayRes.builder()
+                .data(GetUserAssignedItemsMondayRes.Data.builder()
+                    .items_page_by_column_values(
+                        GetUserAssignedItemsMondayRes.ItemPageByColumnValues.builder()
+                            .items(new ArrayList<>())
+                            .build())
+                    .build())
+                .build())
+            .block();
+    }
+
+    public GetAllBoardsWithColumnsMondayRes getAllBoardsWithColumns() {
+        GraphQLRequest boardsRequest = GraphQLRequest.builder()
+            .query(ModnayQuery.GET_ALL_BOARDS_WITH_COLUMNS.getQuery())
+            .build();
+
+        return mondayWebClient.post()
+            .bodyValue(boardsRequest.getRequestBody())
+            .retrieve()
+            .bodyToMono(GetAllBoardsWithColumnsMondayRes.class)
+            .block();
+    }
+
+    public GetAllItemsWithColumnMondayRes getAllItemsWithColumn(String boardId, String deadlineColumnId, String statusColumnId, String assigneeColumnId) {
+        GraphQLRequest itemsRequest = GraphQLRequest.builder()
+            .query(String.format(ModnayQuery.GET_ALL_ITEMS_WITH_COLUMN.getQuery(), boardId,
+                deadlineColumnId, statusColumnId, assigneeColumnId))
+            .build();
+
+        return mondayWebClient.post()
+            .bodyValue(itemsRequest.getRequestBody())
+            .retrieve()
+            .bodyToMono(GetAllItemsWithColumnMondayRes.class)
+            .block();
+    }
+
+    private String getAssigneeColumnIdInBoard(GetAllBoardsWithColumnsMondayRes.Board board,
+        String assigneeColumnName) {
+        for (GetAllBoardsWithColumnsMondayRes.Column column : board.getColumns()) {
+            if (column.getTitle().equals(assigneeColumnName)) {
+                return column.getId();
+            }
+        }
+        return "";
+    }
+
+    private String getDeadlineColumnIdInBoard(GetAllBoardsWithColumnsMondayRes.Board board,
+        String deadlineColumnName) {
+        for (GetAllBoardsWithColumnsMondayRes.Column column : board.getColumns()) {
+            if (column.getTitle().equals(deadlineColumnName)) {
+                return column.getId();
+            }
+        }
+        return "";
+    }
+
+    private GetStatusColumnIdInBoardWithSuccessIndexDto getStatusColumnIdInBoardWithSuccessIndex(
+        GetAllBoardsWithColumnsMondayRes.Board board, String statusColumnName,
+        String completeStatusName) {
+        GetStatusColumnIdInBoardWithSuccessIndexDto statusColumnIdWithSuccessIndex = GetStatusColumnIdInBoardWithSuccessIndexDto.builder()
+            .statusColumnId("")
+            .completeStatusIndex(0)
+            .build();
+        for (GetAllBoardsWithColumnsMondayRes.Column column : board.getColumns()) {
+            if (column.getTitle().equals(statusColumnName)) {
+                statusColumnIdWithSuccessIndex.setStatusColumnId(column.getId());
+                MondayStatusInfo statusInfo = null;
+                try {
+                    statusInfo = objectMapper.readValue(column.getSettings_str(),
+                        MondayStatusInfo.class);
+                } catch (JsonProcessingException e) {
+                    statusInfo.setLabels(new HashMap<>());
+                }
+                for (String key : statusInfo.getLabels().keySet()) {
+                    if (statusInfo.getLabels().get(key).equals(completeStatusName)) {
+                        statusColumnIdWithSuccessIndex.setCompleteStatusIndex(
+                            Integer.parseInt(key));
+                        break;
+                    }
+                }
+            }
+        }
+        return statusColumnIdWithSuccessIndex;
+    }
+
+    private boolean isExpiredItem(GetUserAssignedItemsMondayRes.Item item, String deadlineColumnId,
+        String statusColumnId, Integer completeStatusIndex) throws JsonProcessingException {
+        Date deadline = null;
+        boolean isComplete = true;
+
+        for (GetUserAssignedItemsMondayRes.ColumnValue columnValue : item.getColumn_values()) {
+            // 데드라인 값 조회
+            if (columnValue.getId().equals(deadlineColumnId)) {
+                deadline = objectMapper.readValue(columnValue.getValue(),
+                    MondayTimelineColumnInfo.class).getTo();
+            }
+            // 상태 값 조회
+            if (columnValue.getId().equals(statusColumnId)) {
+                Integer statusIndex = objectMapper.readValue(columnValue.getValue(),
+                    MondayStatusColumnInfo.class).getIndex();
+                if (statusIndex != completeStatusIndex) {
+                    isComplete = false;
+                }
+            }
+        }
+        // 완료되지 않았으며 데드라인이 현재 일자 기준으로 지났다면 만료된 아이템으로 판단
+        if (isComplete == false && deadline != null && deadline.before(new Date())) {
+            return true;
+        }
+        return false;
+    }
+
+    public List<GetUserExpiredItemDto> getUsersExpiredItem() throws JsonProcessingException {
+        GetAllUsersMondayRes mondayUsers = getMondayUsers();
+        // 보드와 해당 보드에 존재하는 컬럼에 대한 정보 조회
+        GetAllBoardsWithColumnsMondayRes mondayBoards = getAllBoardsWithColumns();
+        // 유저별 만료된 아이템 개수 저장
+        Map<String, Integer> userExpiredItemCount = new HashMap<>();
+
+        // 동명이인 케이스 제외하기 때문에 이름을 키값으로 설정
+        for (GetAllUsersMondayRes.User user : mondayUsers.getData().getUsers()) {
+            userExpiredItemCount.put(user.getName(), 0);
+        }
+
+        // 보드마다 순회하며 계산
+        for (GetAllBoardsWithColumnsMondayRes.Board board : mondayBoards.getData().getBoards()) {
+            // 담당자 컬럼, 데드라인 컬럼, 상태 컬럼 id 값 찾기
+            String assigneeColumnId = getAssigneeColumnIdInBoard(board, "담당자");
+            String deadlineColumnId = getDeadlineColumnIdInBoard(board, "데드라인");
+            // 상태 컬럼 id 값, 완료 상태 index 찾기
+            GetStatusColumnIdInBoardWithSuccessIndexDto statusColumnInfo = getStatusColumnIdInBoardWithSuccessIndex(
+                board, "상태", "완료");
+            String statusColumnId = statusColumnInfo.getStatusColumnId();
+            Integer completeStatusIndex = statusColumnInfo.getCompleteStatusIndex();
+
+            // 유저별로 해당 보드에 만료된 아이템 개수 계산
+            for (String username : userExpiredItemCount.keySet()) {
+                GetUserAssignedItemsMondayRes mondayItems = getUserAssignedItems(board.getId(),
+                    assigneeColumnId, username, deadlineColumnId, statusColumnId);
+
+                // 아이템 순회하며 만료 여부 확인
+                for (GetUserAssignedItemsMondayRes.Item item : mondayItems.getData()
+                    .getItems_page_by_column_values().getItems()) {
+                    if (isExpiredItem(item, deadlineColumnId, statusColumnId, completeStatusIndex)) {
+                        userExpiredItemCount.put(username, userExpiredItemCount.get(username) + 1);
+                    }
+                }
+            }
+        }
+
+        List<GetUserExpiredItemDto> userExpiredItems = new ArrayList<>();
+        for (String username : userExpiredItemCount.keySet()) {
+            userExpiredItems.add(GetUserExpiredItemDto.builder()
+                .username(username)
+                .totalExpiredItems(userExpiredItemCount.get(username))
+                .build());
+        }
+        return userExpiredItems;
+    }
+
+    // TODO: 수정 동기화 처리
+    public void syncItems() throws JsonProcessingException {
+        GetAllBoardsWithColumnsMondayRes mondayBoards = getAllBoardsWithColumns();
+        for (GetAllBoardsWithColumnsMondayRes.Board board : mondayBoards.getData().getBoards()) {
+            String assigneeColumnId = getAssigneeColumnIdInBoard(board, "담당자");
+            String deadlineColumnId = getDeadlineColumnIdInBoard(board, "데드라인");
+            GetStatusColumnIdInBoardWithSuccessIndexDto statusColumnInfo = getStatusColumnIdInBoardWithSuccessIndex(
+                board, "상태", "완료");
+            String statusColumnId = statusColumnInfo.getStatusColumnId();
+            Integer completeStatusIndex = statusColumnInfo.getCompleteStatusIndex();
+
+            GetAllItemsWithColumnMondayRes items = getAllItemsWithColumn(board.getId(), deadlineColumnId, statusColumnId, assigneeColumnId);
+
+            for (GetAllItemsWithColumnMondayRes.Item item : items.getData().getBoards().get(0).getItems_page().getItems()) {
+                Date deadLine = null;
+                Boolean isComplete = null;
+                List<MondayUser> assignee = new ArrayList<>();
+                for (GetAllItemsWithColumnMondayRes.ColumnValue columnValue : item.getColumn_values()) {
+                    if (columnValue.getId().equals(deadlineColumnId) && columnValue.getValue() != null){
+                        deadLine = objectMapper.readValue(columnValue.getValue(), MondayTimelineColumnInfo.class).getTo();
+                    }
+                    if (columnValue.getId().equals(statusColumnId) && columnValue.getValue() != null){
+                        Integer statusIndex = objectMapper.readValue(columnValue.getValue(), MondayStatusColumnInfo.class).getIndex();
+                        if (statusIndex != completeStatusIndex) {
+                            isComplete = false;
+                        }else {
+                            isComplete = true;
+                        }
+                    }
+
+                    if (columnValue.getId().equals(assigneeColumnId) && columnValue.getValue() != null) {
+                        MondayAssigneeInfo assigneeId = objectMapper.readValue(
+                            columnValue.getValue(), MondayAssigneeInfo.class);
+                        for (MondayAssigneeInfo.Person person : assigneeId.getPersonsAndTeams()) {
+                            assignee.add(
+                                mondayUserRepository.findById(person.getId().toString()).get());
+                        }
+                    }
+                }
+
+                MondayItem savedItem = mondayItemRepository.save(com.pbl.tasktoolintegration.monday.entity.MondayItem.builder()
+                    .id(item.getId())
+                    .deadLine(deadLine)
+                    .isComplete(isComplete)
+                    .build());
+
+                for (MondayUser user : assignee) {
+                    mondayUserItemRepository.save(MondayUserItem.builder()
+                        .mondayItem(savedItem)
+                        .mondayUser(user)
+                        .build());
+                }
+            }
+        }
+    }
+
+    public List<GetUserExpiredItemDto> getBatchUsersExpiredItem() throws JsonProcessingException {
+        List<MondayUser> mondayUsers = mondayUserRepository.findAll();
+
+        Map<String, Integer> userExpiredItemCount = new HashMap<>();
+        for (MondayUser user : mondayUsers) {
+            userExpiredItemCount.put(user.getName(), 0);
+        }
+
+        List<MondayItem> mondayItems = mondayItemRepository.findAll();
+
+        for (MondayItem item : mondayItems) {
+            Date deadline = item.getDeadLine();
+            Boolean isComplete = item.getIsComplete();
+            if (isComplete != null && isComplete == false && deadline != null && deadline.before(new Date())) {
+                List<MondayUserItem> userItems = mondayUserItemRepository.findByMondayItem(item);
+                for (MondayUserItem userItem : userItems) {
+                    userExpiredItemCount.put(userItem.getMondayUser().getName(),
+                        userExpiredItemCount.get(userItem.getMondayUser().getName()) + 1);
+                }
+            }
+        }
+
+        List<GetUserExpiredItemDto> userExpiredItems = new ArrayList<>();
+        for (String username : userExpiredItemCount.keySet()) {
+            userExpiredItems.add(GetUserExpiredItemDto.builder()
+                .username(username)
+                .totalExpiredItems(userExpiredItemCount.get(username))
+                .build());
+        }
+        return userExpiredItems;
     }
 }
