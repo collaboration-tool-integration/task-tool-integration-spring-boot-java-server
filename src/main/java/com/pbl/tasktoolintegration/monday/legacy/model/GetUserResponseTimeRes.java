@@ -1,4 +1,4 @@
-package com.pbl.tasktoolintegration.monday.model;
+package com.pbl.tasktoolintegration.monday.legacy.model;
 
 import lombok.Builder;
 import lombok.Getter;

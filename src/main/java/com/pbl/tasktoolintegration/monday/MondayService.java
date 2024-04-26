@@ -2,28 +2,45 @@ package com.pbl.tasktoolintegration.monday;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pbl.tasktoolintegration.monday.entity.MondayBoards;
+import com.pbl.tasktoolintegration.monday.entity.MondayConfigurations;
+import com.pbl.tasktoolintegration.monday.entity.MondayConfigurationsBoards;
+import com.pbl.tasktoolintegration.monday.entity.MondayConfigurationsUsers;
+import com.pbl.tasktoolintegration.monday.entity.MondayItems;
+import com.pbl.tasktoolintegration.monday.entity.MondayUsers;
 import com.pbl.tasktoolintegration.monday.legacy.entity.MondayComment;
 import com.pbl.tasktoolintegration.monday.legacy.entity.MondayItem;
 import com.pbl.tasktoolintegration.monday.legacy.entity.MondayUpdate;
 import com.pbl.tasktoolintegration.monday.legacy.entity.MondayUser;
 import com.pbl.tasktoolintegration.monday.legacy.entity.MondayUserItem;
-import com.pbl.tasktoolintegration.monday.model.GetAllBoardsWithColumnsMondayRes;
-import com.pbl.tasktoolintegration.monday.model.GetAllItemsWithColumnMondayRes;
-import com.pbl.tasktoolintegration.monday.model.GetAllUpdatesMondayRes;
-import com.pbl.tasktoolintegration.monday.model.GetAllUsersMondayRes;
-import com.pbl.tasktoolintegration.monday.model.GetStatusColumnIdInBoardWithSuccessIndexDto;
-import com.pbl.tasktoolintegration.monday.model.GetUserAssignedItemsMondayRes;
-import com.pbl.tasktoolintegration.monday.model.GetUserExpiredItemDto;
-import com.pbl.tasktoolintegration.monday.model.GetUsersAverageResponseTimeDto;
-import com.pbl.tasktoolintegration.monday.model.MondayAssigneeInfo;
-import com.pbl.tasktoolintegration.monday.model.MondayStatusColumnInfo;
-import com.pbl.tasktoolintegration.monday.model.MondayStatusInfo;
-import com.pbl.tasktoolintegration.monday.model.MondayTimelineColumnInfo;
+import com.pbl.tasktoolintegration.monday.legacy.model.GetAllBoardsWithColumnsMondayRes;
+import com.pbl.tasktoolintegration.monday.legacy.model.GetAllItemsWithColumnMondayRes;
+import com.pbl.tasktoolintegration.monday.legacy.model.GetAllUpdatesMondayRes;
+import com.pbl.tasktoolintegration.monday.legacy.model.GetAllUsersMondayRes;
+import com.pbl.tasktoolintegration.monday.legacy.model.GetStatusColumnIdInBoardWithSuccessIndexDto;
+import com.pbl.tasktoolintegration.monday.legacy.model.GetUserAssignedItemsMondayRes;
+import com.pbl.tasktoolintegration.monday.legacy.model.GetUserExpiredItemDto;
+import com.pbl.tasktoolintegration.monday.legacy.model.GetUsersAverageResponseTimeDto;
+import com.pbl.tasktoolintegration.monday.legacy.model.MondayAssigneeInfo;
+import com.pbl.tasktoolintegration.monday.legacy.model.MondayStatusColumnInfo;
+import com.pbl.tasktoolintegration.monday.legacy.model.MondayStatusInfo;
+import com.pbl.tasktoolintegration.monday.legacy.model.MondayTimelineColumnInfo;
 import com.pbl.tasktoolintegration.monday.legacy.repository.MondayCommentRepository;
 import com.pbl.tasktoolintegration.monday.legacy.repository.MondayItemRepository;
 import com.pbl.tasktoolintegration.monday.legacy.repository.MondayUpdateRepository;
 import com.pbl.tasktoolintegration.monday.legacy.repository.MondayUserItemRepository;
 import com.pbl.tasktoolintegration.monday.legacy.repository.MondayUserRepository;
+import com.pbl.tasktoolintegration.monday.model.GetAllMondayBoardsDto;
+import com.pbl.tasktoolintegration.monday.model.GetAllMondayItemsWIthCursorRes;
+import com.pbl.tasktoolintegration.monday.model.GetAllMondayUsersDto;
+import com.pbl.tasktoolintegration.monday.model.MondayGetAllBoardsRes;
+import com.pbl.tasktoolintegration.monday.model.MondayGetAllUsersRes;
+import com.pbl.tasktoolintegration.monday.repository.MondayBoardsRepository;
+import com.pbl.tasktoolintegration.monday.repository.MondayConfigurationsBoardsRepository;
+import com.pbl.tasktoolintegration.monday.repository.MondayConfigurationsRepository;
+import com.pbl.tasktoolintegration.monday.repository.MondayConfigurationsUsersRepository;
+import com.pbl.tasktoolintegration.monday.repository.MondayItemsRepository;
+import com.pbl.tasktoolintegration.monday.repository.MondayUsersRepository;
 import graphql.kickstart.spring.webclient.boot.GraphQLRequest;
 import java.util.ArrayList;
 import java.util.Date;
@@ -31,6 +48,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -50,6 +68,14 @@ public class MondayService {
     private final ObjectMapper objectMapper;
     private final MondayItemRepository mondayItemRepository;
     private final MondayUserItemRepository mondayUserItemRepository;
+
+    // new
+    private final MondayUsersRepository mondayUsersRepository;
+    private final MondayConfigurationsRepository mondayConfigurationsRepository;
+    private final MondayBoardsRepository mondayBoardsRepository;
+    private final MondayConfigurationsUsersRepository mondayConfigurationsUsersRepository;
+    private final MondayConfigurationsBoardsRepository mondayConfigurationsBoardsRepository;
+    private final MondayItemsRepository mondayItemsRepository;
 
     private List<String> getMentionedUsersInString(String text) {
         List<String> mentionedUsers = new ArrayList<>();
@@ -494,7 +520,8 @@ public class MondayService {
         for (MondayItem item : mondayItems) {
             Date deadline = item.getDeadLine();
             Boolean isComplete = item.getIsComplete();
-            if (isComplete != null && isComplete == false && deadline != null && deadline.before(new Date())) {
+            if (isComplete != null && isComplete == false && deadline != null && deadline.before(
+                new Date())) {
                 List<MondayUserItem> userItems = mondayUserItemRepository.findByMondayItem(item);
                 for (MondayUserItem userItem : userItems) {
                     userExpiredItemCount.put(userItem.getMondayUser().getName(),
@@ -511,5 +538,119 @@ public class MondayService {
                 .build());
         }
         return userExpiredItems;
+    }
+
+    public List<GetAllMondayUsersDto> getAllMondayUsers(String apiKey) {
+        GraphQLRequest userRequest = GraphQLRequest.builder()
+            .query(ModnayQuery.MONDAY_GET_ALL_USERS.getQuery())
+            .build();
+        MondayGetAllUsersRes response = mondayWebClient.post()
+            .bodyValue(userRequest.getRequestBody())
+            .header("Authorization", apiKey)
+            .retrieve()
+            .bodyToMono(MondayGetAllUsersRes.class)
+            .block();
+
+        return response.getData().getUsers().stream()
+            .map(GetAllMondayUsersDto::from)
+            .collect(Collectors.toList());
+    }
+
+    public List<GetAllMondayBoardsDto> getAllMondayBoards(String apiKey) {
+        List<GetAllMondayBoardsDto> response = new ArrayList<>();
+        int page = 1;
+        while (true) {
+            GraphQLRequest boardRequest = GraphQLRequest.builder()
+                .query(String.format(ModnayQuery.MONDAY_GET_ALL_BOARDS.getQuery(), page))
+                .build();
+            MondayGetAllBoardsRes res = mondayWebClient.post()
+                .bodyValue(boardRequest.getRequestBody())
+                .header("Authorization", apiKey)
+                .retrieve()
+                .bodyToMono(MondayGetAllBoardsRes.class)
+                .block();
+
+            if (res.getData().getBoards().size() == 0) {
+                break;
+            }
+
+            response.addAll(res.getData().getBoards().stream()
+                .map(GetAllMondayBoardsDto::from)
+                .collect(Collectors.toList()));
+            page++;
+        }
+
+        return response;
+    }
+
+    public void syncUsers(List<Long> mondayConfigurationIds) {
+        for (Long id : mondayConfigurationIds) {
+            MondayConfigurations mondayConfiguration = mondayConfigurationsRepository.findById(id)
+                .get();
+            List<GetAllMondayUsersDto> mondayUsers = getAllMondayUsers(mondayConfiguration.getApiKey());
+            for (GetAllMondayUsersDto user : mondayUsers) {
+                MondayUsers savedUser = mondayUsersRepository.save(MondayUsers.builder()
+                    .id(user.getId())
+                    .build());
+                mondayConfigurationsUsersRepository.save(MondayConfigurationsUsers.builder()
+                    .mondayConfiguration(mondayConfiguration)
+                    .mondayUser(savedUser)
+                    .build());
+            }
+        }
+    }
+
+    public List<Long> getMondayConfigIds() {
+        return mondayConfigurationsRepository.findAll().stream()
+            .map(MondayConfigurations::getId)
+            .collect(Collectors.toList());
+    }
+
+    // TODO: item 동기화
+    public void syncItemsByBoardId(String boardId, String apiKey) {
+        MondayBoards board = mondayBoardsRepository.findById(boardId)
+            .get();
+        String cursor = null;
+        do {
+            GraphQLRequest itemsRequest = cursor == null ? GraphQLRequest.builder()
+                .query(String.format(ModnayQuery.MONDAY_GET_ALL_ITEMS_BY_BOARDS_WITHOUT_CURSOR.getQuery(), boardId))
+                .build() : GraphQLRequest.builder()
+                .query(String.format(ModnayQuery.MONDAY_GET_ALL_ITEMS_BY_BOARDS_WITH_CURSOR.getQuery(), boardId, cursor))
+                .build();
+            GetAllMondayItemsWIthCursorRes items = mondayWebClient.post()
+                .bodyValue(itemsRequest.getRequestBody())
+                .header("Authorization", apiKey)
+                .retrieve()
+                .bodyToMono(GetAllMondayItemsWIthCursorRes.class)
+                .block();
+
+            for (GetAllMondayItemsWIthCursorRes.Item item : items.getData().getBoards().get(0).getItems_page().getItems()) {
+                mondayItemsRepository.save(MondayItems.builder()
+                    .id(item.getId())
+                    .mondayBoard(board)
+                    .build());
+            }
+
+            cursor = items.getData().getBoards().get(0).getItems_page().getCursor();
+        } while (cursor != "null");
+    }
+
+    public void syncBoardsWithItems(List<Long> mondayConfigurationIds) {
+        for (Long id : mondayConfigurationIds) {
+            MondayConfigurations mondayConfiguration = mondayConfigurationsRepository.findById(id)
+                .get();
+            List<GetAllMondayBoardsDto> mondayBoards = getAllMondayBoards(mondayConfiguration.getApiKey());
+            for (GetAllMondayBoardsDto board : mondayBoards) {
+                MondayBoards savedBoard = mondayBoardsRepository.save(MondayBoards.builder()
+                    .id(board.getId())
+                    .build());
+                mondayConfigurationsBoardsRepository.save(MondayConfigurationsBoards.builder()
+                    .mondayConfiguration(mondayConfiguration)
+                    .mondayBoard(savedBoard)
+                    .build());
+
+                syncItemsByBoardId(savedBoard.getId(), mondayConfiguration.getApiKey());
+            }
+        }
     }
 }

@@ -1,4 +1,4 @@
-package com.pbl.tasktoolintegration.monday.model;
+package com.pbl.tasktoolintegration.monday.legacy.model;
 
 import java.util.List;
 import lombok.AllArgsConstructor;
