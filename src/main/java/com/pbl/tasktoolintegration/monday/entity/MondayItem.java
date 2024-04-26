@@ -15,10 +15,10 @@ public class MondayItem {
     @Id
     private String id;
 
-    @Column
+    @Column(name = "is_complete")
     private Boolean isComplete;
 
-    @Column
+    @Column(name = "deadline")
     private Date deadLine;
 
     @Builder

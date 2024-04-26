@@ -20,14 +20,14 @@ public class MondayUpdate {
     @Column
     private String content;
 
-    @Column
+    @Column(name = "created_at")
     private Date createdAt;
 
-    @Column
+    @Column(name = "updated_at")
     private Date updatedAt;
 
     @ManyToOne
-    @JoinColumn(name = "creator_id")
+    @JoinColumn(name = "monday_creator_id")
     private MondayUser creator;
 
     public void updateContent(String content) {

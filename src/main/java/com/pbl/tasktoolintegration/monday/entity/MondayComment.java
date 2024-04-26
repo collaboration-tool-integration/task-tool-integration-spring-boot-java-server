@@ -17,15 +17,15 @@ public class MondayComment {
     @Id
     private String id;
 
-    @Column
+    @Column(name = "created_at")
     private Date createdAt;
 
     @ManyToOne
-    @JoinColumn
+    @JoinColumn(name = "monday_creator_id")
     private MondayUser creator;
 
     @ManyToOne
-    @JoinColumn(name = "update_id")
+    @JoinColumn(name = "monday_update_id")
     private MondayUpdate update;
 
     @Builder
