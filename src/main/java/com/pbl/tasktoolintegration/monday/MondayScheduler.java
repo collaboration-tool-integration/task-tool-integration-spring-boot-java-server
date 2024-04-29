@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 public class MondayScheduler {
     private final MondayService mondayService;
 
-    @Scheduled(fixedRate = 1000 * 60)
+    @Scheduled(fixedRate = 1000 * 60 * 3)
     public void syncMondayDate() throws JsonProcessingException {
 //        mondayService.syncUsers();
 //
@@ -22,5 +22,6 @@ public class MondayScheduler {
         List<Long> mondayConfigIds = mondayService.getMondayConfigIds();
         mondayService.syncUsers(mondayConfigIds);
         mondayService.syncBoardsWithItems(mondayConfigIds);
+        mondayService.syncUpdatesAndComments(mondayConfigIds);
     }
 }

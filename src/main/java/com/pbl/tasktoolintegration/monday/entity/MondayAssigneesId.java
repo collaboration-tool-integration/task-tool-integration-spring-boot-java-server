@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 @EqualsAndHashCode
 @NoArgsConstructor
 @Getter
-public class MondayItemsId implements java.io.Serializable{
-    private String id;
-    private MondayBoards mondayBoard;
+public class MondayAssigneesId implements java.io.Serializable{
+    private String mondayItem;
+    private String mondayUser;
 }

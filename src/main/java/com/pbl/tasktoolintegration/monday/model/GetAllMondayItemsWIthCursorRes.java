@@ -27,5 +27,6 @@ public class GetAllMondayItemsWIthCursorRes {
     @lombok.Data
     public static class Item {
         private String id;
+        private String creator_id;
     }
 }
