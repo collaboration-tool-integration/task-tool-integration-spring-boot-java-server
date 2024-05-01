@@ -1,7 +1,10 @@
 package com.pbl.tasktoolintegration.jira.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -10,6 +13,9 @@ import java.util.ArrayList;
 @Data
 @Entity
 @Table(name = "JiraProject", indexes = @Index(columnList = "orgId, jiraId", unique = true))
+@Builder
+@RequiredArgsConstructor
+@AllArgsConstructor
 public class JiraProject {
     // DB 고유 ID
     @Id
@@ -31,18 +37,16 @@ public class JiraProject {
     // 프로젝트 로고 URL
     private String iconUrl;
     // 아카이브 여부
-    @Column(nullable = false)
-    private Boolean archived;
+    private Boolean archived = false;
     // 아카이브 일시
     private LocalDateTime archivedDate;
     // 비공개 여부
     @Column(nullable = false)
-    private Boolean isPrivate;
+    private Boolean isPrivate = false;
     // 단순화 여부
     @Column(nullable = false)
-    private Boolean simplified;
+    private Boolean simplified = false;
     // 삭제 여부
-    @Column(nullable = false)
     private Boolean deleted;
     // 삭제 일시
     private LocalDateTime deletedDate;

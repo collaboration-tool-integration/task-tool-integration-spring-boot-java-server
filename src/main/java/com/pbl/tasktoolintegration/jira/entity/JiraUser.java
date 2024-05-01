@@ -1,7 +1,10 @@
 package com.pbl.tasktoolintegration.jira.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.RequiredArgsConstructor;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -9,6 +12,9 @@ import java.util.ArrayList;
 @Data
 @Entity
 @Table(name = "JiraUser", indexes = @Index(name = "idx_jira_account_id", columnList = "jiraAccountId", unique = true))
+@RequiredArgsConstructor
+@AllArgsConstructor
+@Builder
 public class JiraUser {
     // DB 고유 ID
     @Id
