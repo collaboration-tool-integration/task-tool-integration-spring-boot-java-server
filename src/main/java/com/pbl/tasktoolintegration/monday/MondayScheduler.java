@@ -1,6 +1,7 @@
 package com.pbl.tasktoolintegration.monday;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -10,13 +11,17 @@ import org.springframework.stereotype.Component;
 public class MondayScheduler {
     private final MondayService mondayService;
 
-    @Scheduled(fixedRate = 1000 * 60)
+    @Scheduled(fixedRate = 1000 * 60 * 3)
     public void syncMondayDate() throws JsonProcessingException {
-        // user의 경우 정보 업데이트 관련 필드가 없어 매번 새로운 정보를 가져옴
-        mondayService.syncUsers();
+//        mondayService.syncUsers();
+//
+//        mondayService.syncUpdates();
+//
+//        mondayService.syncItems();
 
-        mondayService.syncUpdates();
-
-        mondayService.syncItems();
+        List<Long> mondayConfigIds = mondayService.getMondayConfigIds();
+        mondayService.syncUsers(mondayConfigIds);
+        mondayService.syncBoardsWithItems(mondayConfigIds);
+        mondayService.syncUpdatesAndComments(mondayConfigIds);
     }
 }
