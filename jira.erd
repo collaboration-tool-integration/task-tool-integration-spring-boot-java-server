@@ -4,13 +4,13 @@
   "settings": {
     "width": 3000,
     "height": 3000,
-    "scrollTop": -169,
-    "scrollLeft": -351,
+    "scrollTop": -1335.2505,
+    "scrollLeft": -444.9339,
     "zoomLevel": 1,
     "show": 511,
     "database": 16,
     "databaseName": "TaskToolIntegration",
-    "canvasType": "@dineug/erd-editor/builtin-generator-code",
+    "canvasType": "ERD",
     "language": 32,
     "tableNameCase": 4,
     "columnNameCase": 2,
@@ -840,7 +840,7 @@
         "comment": "아카이브 여부",
         "dataType": "BOOLEAN",
         "default": "false",
-        "options": 8,
+        "options": 0,
         "ui": {
           "keys": 0,
           "widthName": 60,
@@ -849,7 +849,7 @@
           "widthDefault": 60
         },
         "meta": {
-          "updateAt": 1714488317522,
+          "updateAt": 1714581263046,
           "createAt": 1714486445131
         }
       },
@@ -960,7 +960,7 @@
         "comment": "삭제 여부",
         "dataType": "boolean",
         "default": "false",
-        "options": 8,
+        "options": 0,
         "ui": {
           "keys": 0,
           "widthName": 60,
@@ -969,7 +969,7 @@
           "widthDefault": 60
         },
         "meta": {
-          "updateAt": 1714488445661,
+          "updateAt": 1714581266118,
           "createAt": 1714488433373
         }
       },
@@ -5570,7 +5570,7 @@
       {
         "name": 1714488069098,
         "dataType": 1714486773191,
-        "options(notNull)": 1714488315090,
+        "options(notNull)": 1714581263046,
         "comment": 1714486781654,
         "default": 1714488317522
       }
@@ -5643,7 +5643,7 @@
       {
         "name": 1714488437612,
         "dataType": 1714488440659,
-        "options(notNull)": 1714488441727,
+        "options(notNull)": 1714581266118,
         "default": 1714488443296,
         "comment": 1714488445661
       }
