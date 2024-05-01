@@ -8,6 +8,7 @@ import java.util.ArrayList;
 
 @Data
 @Entity
+@Table(name = "JiraUser", indexes = @Index(name = "idx_jira_account_id", columnList = "jiraAccountId", unique = true))
 public class JiraUser {
     // DB 고유 ID
     @Id
@@ -19,6 +20,7 @@ public class JiraUser {
     // 지라 계정 타입
     @Column(nullable = false)
     private String jiraAccountType;
+
     // 계정 아바타 URL
     private String avatarUrls;
     // 사용자명
@@ -27,33 +29,38 @@ public class JiraUser {
     @Column(nullable = false)
     private Boolean active;
 
-    // Jira Project
-    @OneToMany(mappedBy = "jiraUser")
-    private List<JiraProject> jiraProjectList = new ArrayList<>();
 
-    @OneToMany(mappedBy = "assigneeJiraUser")
+    @OneToMany(mappedBy = "leadUser")
+    private List<JiraProject> leadJiraProjectList = new ArrayList<>();
+
+    @OneToMany(mappedBy = "archivedUser")
+    private List<JiraProject> archivedJiraProjectList = new ArrayList<>();
+
+    @OneToMany(mappedBy = "deletedUser")
+    private List<JiraProject> deletedJiraProjectList = new ArrayList<>();
+
+
+    @OneToMany(mappedBy = "assigneeUser")
     private List<JiraIssue> assigneeJiraIssueList = new ArrayList<>();
 
-    @OneToMany(mappedBy = "creatorJiraUser")
+    @OneToMany(mappedBy = "creatorUser")
     private List<JiraIssue> creatorJiraIssueList = new ArrayList<>();
 
-    // Issue History
-    @OneToMany(mappedBy = "jiraUser")
-    private List<JiraIssueHistory> jiraIssueHistoryList = new ArrayList<>();
-
-    @OneToMany(mappedBy = "assigneeJiraUser")
+    @OneToMany(mappedBy = "assigneeUser")
     private List<JiraIssueHistory> assigneeJiraIssueHistoryList = new ArrayList<>();
 
-    @OneToMany(mappedBy = "creatorJiraUser")
+    @OneToMany(mappedBy = "creatorUser")
     private List<JiraIssueHistory> creatorJiraIssueHistoryList = new ArrayList<>();
 
     @OneToMany(mappedBy = "authorUser")
     private List<JiraComment> authorJiraCommentList = new ArrayList<>();
 
-    @OneToMany(mappedBy = "updateUser")
+    @OneToMany(mappedBy = "updateAuthorUser")
     private List<JiraComment> updateJiraCommentList = new ArrayList<>();
 
-    // Comment History
-    @OneToMany(mappedBy = "jiraUser")
-    private List<JiraCommentHistory> jiraCommentHistoryList = new ArrayList<>();
+    @OneToMany(mappedBy = "authorUser")
+    private List<JiraCommentHistory> authorJiraCommentHistoryList = new ArrayList<>();
+
+    @OneToMany(mappedBy = "updateAuthorUser")
+    private List<JiraCommentHistory> updateAuthorJiraCommentHistoryList = new ArrayList<>();
 }

@@ -8,10 +8,11 @@ import java.time.LocalDateTime;
 
 @Data
 @Entity
+@Table(name = "JiraIssueHistory", indexes = @Index(columnList = "updated, jiraIssueId", unique = true))
 public class JiraIssueHistory {
     // DB 고유 ID
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     // 지라 조직 내 ID
@@ -45,30 +46,30 @@ public class JiraIssueHistory {
 
     // Jira Issue
     @ManyToOne
-    @JoinColumn(name = "parent_issue_id")
+    @JoinColumn(name = "parentIssueId")
     private JiraIssue parentIssue;
 
     // Jira Issue
     @ManyToOne
-    @JoinColumn(name = "jira_issue_id")
+    @JoinColumn(name = "jiraIssueId")
     private JiraIssue jiraIssue;
 
     // Jira User
     @ManyToOne
-    @JoinColumn(name = "creator_user_id")
-    private JiraUser creatorUserId;
+    @JoinColumn(name = "creatorUserId")
+    private JiraUser creatorUser;
 
     // Jira User
     @ManyToOne
-    @JoinColumn(name = "assignee_user_id")
-    private JiraUser assigneeUserId;
+    @JoinColumn(name = "assigneeUserId")
+    private JiraUser assigneeUser;
 
     // Jira Issue Type
     @ManyToOne
-    @JoinColumn(name = "issue_type_id")
+    @JoinColumn(name = "issueTypeId")
     private JiraIssueType jiraIssueType;
 
     @ManyToOne
-    @JoinColumn(name = "issue_status_id")
+    @JoinColumn(name = "issueStatusId")
     private JiraStatus jiraStatus;
 }

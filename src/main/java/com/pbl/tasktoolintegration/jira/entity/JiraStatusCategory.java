@@ -8,10 +8,11 @@ import java.util.ArrayList;
 
 @Data
 @Entity
+@Table(name = "JiraStatusCategory", indexes = @Index(columnList = "jiraId", unique = true))
 public class JiraStatusCategory {
     // DB 고유 ID
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     // 지라 조직 내 ID
     @Column(nullable = false)

@@ -9,10 +9,11 @@ import java.util.ArrayList;
 
 @Data
 @Entity
+@Table(name = "JiraProject", indexes = @Index(columnList = "orgId, jiraId", unique = true))
 public class JiraProject {
     // DB 고유 ID
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     // 지라 내 UUID
     @Column(nullable = false)
@@ -47,19 +48,19 @@ public class JiraProject {
     private LocalDateTime deletedDate;
     // Jira User
     @ManyToOne
-    @JoinColumn(name = "lead_user_id")
+    @JoinColumn(name = "leadUserId")
     private JiraUser leadUser;
     // Jira User
     @ManyToOne
-    @JoinColumn(name = "archived_user_id")
+    @JoinColumn(name = "archivedUserId")
     private JiraUser archivedUser;
     // Jira User
     @ManyToOne
-    @JoinColumn(name = "deleted_user_id")
+    @JoinColumn(name = "deletedUserId")
     private JiraUser deletedUser;
 
     @ManyToOne
-    @JoinColumn(name = "org_id")
+    @JoinColumn(name = "orgId")
     private JiraOrganization jiraOrganization;
 
     // Jira Issue Type

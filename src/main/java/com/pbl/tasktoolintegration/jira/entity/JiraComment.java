@@ -9,6 +9,7 @@ import java.util.List;
 
 @Data
 @Entity
+@Table(name = "JiraComment", indexes = @Index(columnList = "jiraIssueId, jiraId", unique = true))
 public class JiraComment {
     // DB 고유 ID
     @Id
@@ -32,16 +33,16 @@ public class JiraComment {
 
     // Jira Issue
     @ManyToOne
-    @JoinColumn(name = "jira_issue_id")
+    @JoinColumn(name = "jiraIssueId")
     private JiraIssue jiraIssue;
 
     @ManyToOne
-    @JoinColumn(name = "author_user_id")
+    @JoinColumn(name = "authorUserId")
     private JiraUser authorUser;
 
     @ManyToOne
-    @JoinColumn(name = "update_author_id")
-    private JiraUser updateUser;
+    @JoinColumn(name = "updateAuthorUserId")
+    private JiraUser updateAuthorUser;
 
     // Comment History
     @OneToMany(mappedBy = "jiraComment")

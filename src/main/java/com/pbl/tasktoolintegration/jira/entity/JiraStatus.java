@@ -8,11 +8,13 @@ import java.util.ArrayList;
 
 @Data
 @Entity
+@Table(name = "JiraStatus", indexes = @Index(columnList = "jiraProjectId, jiraStatusCategoryId", unique = true))
 public class JiraStatus {
     // DB 고유 ID
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     // 상태명
     @Column(nullable = false)
     private String name;
@@ -21,12 +23,12 @@ public class JiraStatus {
 
     // Jira Project
     @ManyToOne
-    @JoinColumn(name = "jira_project_id")
+    @JoinColumn(name = "jiraProjectId")
     private JiraProject jiraProject;
 
     // Jira Status Category
     @ManyToOne
-    @JoinColumn(name = "jira_status_category_id")
+    @JoinColumn(name = "jiraStatusCategoryId")
     private JiraStatusCategory jiraStatusCategory;
 
     // Jira Issue

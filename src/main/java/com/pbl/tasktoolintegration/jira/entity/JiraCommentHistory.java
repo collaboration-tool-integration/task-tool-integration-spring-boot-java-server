@@ -1,18 +1,17 @@
 package com.pbl.tasktoolintegration.jira.entity;
 
-import com.pbl.tasktoolintegration.jira.model.dto.JiraIssue;
-import com.pbl.tasktoolintegration.jira.model.dto.JiraUser;
 import jakarta.persistence.*;
 import lombok.Data;
 
-import java.time.LocalTime;
+import java.time.LocalDateTime;
 
 @Data
 @Entity
+@Table(name = "JiraCommentHistory", indexes = @Index(columnList = "updated, jiraCommentId", unique = true))
 public class JiraCommentHistory {
     // DB 고유 ID
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     // 지라 조직 내 ID
@@ -25,25 +24,25 @@ public class JiraCommentHistory {
 
     // 생성 일자
     @Column(nullable = false)
-    private LocalTime created;
+    private LocalDateTime created;
 
     // 업데이트 일자
-    private LocalTime updated;
+    private LocalDateTime updated;
 
     @ManyToOne
-    @JoinColumn(name = "jira_comment_id")
+    @JoinColumn(name = "jiraCommentId")
     private JiraComment jiraComment;
 
     // Jira Issue
     @ManyToOne
-    @JoinColumn(name = "jira_issue_id")
+    @JoinColumn(name = "jiraIssueId")
     private JiraIssue jiraIssue;
 
     @ManyToOne
-    @JoinColumn(name = "author_user_id")
-    private JiraUser authorUserId;
+    @JoinColumn(name = "authorUserId")
+    private JiraUser authorUser;
 
     @ManyToOne
-    @JoinColumn(name = "update_author_id")
-    private JiraUser updateAuthorId;
+    @JoinColumn(name = "updateAuthorUserId")
+    private JiraUser updateAuthorUser;
 }

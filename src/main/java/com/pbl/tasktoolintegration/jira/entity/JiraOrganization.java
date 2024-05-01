@@ -9,9 +9,9 @@ import java.util.List;
 @Data
 @Entity
 public class JiraOrganization {
-    // DB 고유 ID
+    // DB 고유 ID
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     // Jira 조직 URL
     @Column(nullable = false)

@@ -10,10 +10,11 @@ import java.util.List;
 
 @Data
 @Entity
+@Table(name = "JiraIssue", indexes = @Index(columnList = "jiraProjectId, jiraId", unique = true))
 public class JiraIssue {
     // DB 고유 ID
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     // 지라 조직 내 ID
@@ -45,33 +46,31 @@ public class JiraIssue {
     // 업데이트 일자
     private LocalDateTime updated;
 
-    // Jira User
     @ManyToOne
-    @JoinColumn(name = "assignee_user_id")
-    private JiraUser assigneeJiraUser;
+    @JoinColumn(name = "assigneeUserId")
+    private JiraUser assigneeUser;
+
+    @ManyToOne
+    @JoinColumn(name = "creatorUserId")
+    private JiraUser creatorUser;
 
     // Jira Issue Type
     @ManyToOne
-    @JoinColumn(name = "issue_type_id")
+    @JoinColumn(name = "issueTypeId")
     private JiraIssueType jiraIssueType;
 
     // Jira Project
     @ManyToOne
-    @JoinColumn(name = "jira_project_id")
+    @JoinColumn(name = "jiraProjectId")
     private JiraProject jiraProject;
 
-    // Jira User
     @ManyToOne
-    @JoinColumn(name = "creator_user_id")
-    private JiraUser creatorJiraUser;
-
-    @ManyToOne
-    @JoinColumn(name = "issue_status_id")
+    @JoinColumn(name = "issueStatusId")
     private JiraStatus jiraStatus;
 
     // Jira Issue
     @ManyToOne
-    @JoinColumn(name = "parent_issue_id")
+    @JoinColumn(name = "parentIssueId")
     private JiraIssue parentIssue;
 
     @OneToMany(mappedBy = "parentIssue")
