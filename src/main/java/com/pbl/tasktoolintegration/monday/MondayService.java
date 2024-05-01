@@ -601,6 +601,12 @@ public class MondayService {
             for (GetAllMondayUsersDto user : mondayUsers) {
                 MondayUsers savedUser = mondayUsersRepository.save(MondayUsers.builder()
                     .id(user.getId())
+                    .createdAt(user.getCreatedAt())
+                    .email(user.getEmail())
+                    .name(user.getName())
+                    .phoneNumber(user.getPhoneNumber())
+                    .title(user.getTitle())
+                    .url(user.getUrl())
                     .build());
                 mondayConfigurationsUsersRepository.save(MondayConfigurationsUsers.builder()
                     .mondayConfiguration(mondayConfiguration)

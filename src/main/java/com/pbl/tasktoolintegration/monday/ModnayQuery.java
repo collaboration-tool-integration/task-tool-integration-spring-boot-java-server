@@ -10,7 +10,7 @@ public enum ModnayQuery {
     MONDAY_GET_ALL_ITEMS_BY_BOARDS_WITHOUT_CURSOR("query { boards (ids: %s) { items_page { cursor items { id creator_id } } } }"),
     MONDAY_GET_ALL_ITEMS_BY_BOARDS_WITH_CURSOR("query { boards (ids: %s) { items_page (cursor : \"%s\") { cursor items { id creator_id } } } }"),
     MONDAY_GET_ALL_BOARDS("query { boards (page: %s) { id } }"),
-    MONDAY_GET_ALL_USERS("query { users { id } }"),
+    MONDAY_GET_ALL_USERS("query { users { id created_at email name phone title url } }"),
     GET_ALL_UPDATES("query { updates { id updated_at creator{ id name } text_body created_at replies { id updated_at creator { id name } created_at } } }"),
     GET_ALL_BOARDS_WITH_COLUMNS("query { boards { id columns { id title type settings_str } } }"),
     // board id, 담당자 column id, 대상 담당자명, 타임라인 column id, 상태 column id

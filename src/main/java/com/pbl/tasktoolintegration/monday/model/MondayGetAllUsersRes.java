@@ -1,5 +1,6 @@
 package com.pbl.tasktoolintegration.monday.model;
 
+import java.util.Date;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -22,5 +23,11 @@ public class MondayGetAllUsersRes {
     @lombok.Data
     public static class User {
         private String id;
+        private Date created_at;
+        private String email;
+        private String name;
+        private String phone;
+        private String title;
+        private String url;
     }
 }
