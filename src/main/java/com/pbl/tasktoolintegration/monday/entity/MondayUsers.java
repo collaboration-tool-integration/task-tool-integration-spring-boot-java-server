@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @Entity(name = "monday_users")
 @Getter
 @NoArgsConstructor(access = lombok.AccessLevel.PROTECTED)
-public class MondayUsers {
+public class MondayUsers implements java.io.Serializable{
     @Id
     private String id;
 
@@ -30,17 +30,13 @@ public class MondayUsers {
     @Column
     private String title;
 
-    @Column(columnDefinition = "TEXT")
-    private String url;
-
     @Builder
-    public MondayUsers(String id, Date createdAt, String email, String name, String phoneNumber, String title, String url) {
+    public MondayUsers(String id, Date createdAt, String email, String name, String phoneNumber, String title) {
         this.id = id;
         this.createdAt = createdAt;
         this.email = email;
         this.name = name;
         this.phoneNumber = phoneNumber;
         this.title = title;
-        this.url = url;
     }
 }

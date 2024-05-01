@@ -13,7 +13,6 @@ public class GetAllMondayUsersDto {
     private String name;
     private String phoneNumber;
     private String title;
-    private String url;
 
     public static GetAllMondayUsersDto from(MondayGetAllUsersRes.User user) {
         return GetAllMondayUsersDto.builder()
@@ -23,7 +22,6 @@ public class GetAllMondayUsersDto {
                 .name(user.getName())
                 .phoneNumber(user.getPhone())
                 .title(user.getTitle())
-                .url(user.getUrl())
                 .build();
     }
 }

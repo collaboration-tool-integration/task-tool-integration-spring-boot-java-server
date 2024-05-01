@@ -24,10 +24,10 @@ import com.pbl.tasktoolintegration.monday.legacy.model.GetStatusColumnIdInBoardW
 import com.pbl.tasktoolintegration.monday.legacy.model.GetUserAssignedItemsMondayRes;
 import com.pbl.tasktoolintegration.monday.legacy.model.GetUserExpiredItemDto;
 import com.pbl.tasktoolintegration.monday.legacy.model.GetUsersAverageResponseTimeDto;
-import com.pbl.tasktoolintegration.monday.legacy.model.MondayAssigneeInfo;
+import com.pbl.tasktoolintegration.monday.model.MondayAssigneeInfo;
 import com.pbl.tasktoolintegration.monday.legacy.model.MondayStatusColumnInfo;
-import com.pbl.tasktoolintegration.monday.legacy.model.MondayStatusInfo;
-import com.pbl.tasktoolintegration.monday.legacy.model.MondayTimelineColumnInfo;
+import com.pbl.tasktoolintegration.monday.model.MondayStatusInfo;
+import com.pbl.tasktoolintegration.monday.model.MondayTimelineColumnInfo;
 import com.pbl.tasktoolintegration.monday.legacy.repository.MondayCommentRepository;
 import com.pbl.tasktoolintegration.monday.legacy.repository.MondayItemRepository;
 import com.pbl.tasktoolintegration.monday.legacy.repository.MondayUpdateRepository;
@@ -91,8 +91,8 @@ public class MondayService {
         List<String> mentionedUsers = new ArrayList<>();
         String[] words = text.split(" ");
         for (String word : words) {
-            if (word.length() >= 1 && word.charAt(0) == '@'
-                && mentionedUsers.contains(word.substring(1)) == false) {
+            if (!word.isEmpty() && word.charAt(0) == '@'
+                && !mentionedUsers.contains(word.substring(1))) {
                 mentionedUsers.add(word.substring(1));
             }
         }
@@ -224,7 +224,7 @@ public class MondayService {
         for (String userId : userResponseTimeMap.keySet()) {
             List<Integer> responseTimes = userResponseTimeMap.get(userId);
             // 응답한 기록이 없는 경우 분석 불가
-            if (responseTimes.size() == 0) {
+            if (responseTimes.isEmpty()) {
                 continue;
             }
 
@@ -254,7 +254,7 @@ public class MondayService {
 
         for (MondayUpdate update : mondayUpdates) {
             List<String> mentionedUsers = getMentionedUsersInString(update.getContent());
-            if (mentionedUsers.size() > 0) {
+            if (!mentionedUsers.isEmpty()) {
                 Date startDate = update.getCreatedAt();
                 List<String> leftUsers = new ArrayList<>(mentionedUsers);
                 List<MondayComment> mondayComments = mondayCommentRepository.findByUpdate(update);
@@ -578,6 +578,7 @@ public class MondayService {
                 .header("Authorization", apiKey)
                 .retrieve()
                 .bodyToMono(MondayGetAllBoardsRes.class)
+                .doOnError(e -> log.error("error : {}", e.getMessage()))
                 .block();
 
             if (res.getData().getBoards().size() == 0) {
@@ -606,7 +607,6 @@ public class MondayService {
                     .name(user.getName())
                     .phoneNumber(user.getPhoneNumber())
                     .title(user.getTitle())
-                    .url(user.getUrl())
                     .build());
                 mondayConfigurationsUsersRepository.save(MondayConfigurationsUsers.builder()
                     .mondayConfiguration(mondayConfiguration)
@@ -622,7 +622,7 @@ public class MondayService {
             .collect(Collectors.toList());
     }
 
-    public void syncItemsByBoardId(String boardId, String apiKey) {
+    public void syncItemsByBoardId(String boardId, String apiKey) throws JsonProcessingException {
         MondayBoards board = mondayBoardsRepository.findById(boardId)
             .get();
         String cursor = null;
@@ -643,13 +643,50 @@ public class MondayService {
                 MondayItems savedItem = mondayItemsRepository.save(MondayItems.builder()
                     .id(item.getId())
                     .mondayBoard(board)
+                    .createdAt(item.getCreated_at())
+                    .updatedAt(item.getUpdated_at())
+                    .name(item.getName())
                     .build());
 
-                if (item.getCreator_id() != null && mondayUsersRepository.findById(item.getCreator_id()).isPresent()) {
-                    mondayAssigneesRepository.save(MondayAssignees.builder()
-                        .mondayItem(savedItem)
-                        .mondayUser(mondayUsersRepository.findById(item.getCreator_id()).get())
-                        .build());
+                for (GetAllMondayItemsWIthCursorRes.ColumnValue columnValue : item.getColumn_values()) {
+                    if (columnValue.getColumn().getTitle().equals("작업자") && columnValue.getValue() != null){
+                        MondayAssigneeInfo assigneeInfo = objectMapper.readValue(columnValue.getValue(),
+                            MondayAssigneeInfo.class);
+
+                        for (MondayAssigneeInfo.Person person : assigneeInfo.getPersonsAndTeams()) {
+                            MondayUsers assignee = mondayUsersRepository.findById(person.getId().toString()).get();
+                            mondayAssigneesRepository.save(MondayAssignees.builder()
+                                .mondayItem(savedItem)
+                                .mondayUser(assignee)
+                                .build());
+                        }
+
+                        continue;
+                    }
+
+                    if (columnValue.getColumn().getTitle().equals("타임라인") && columnValue.getValue() != null){
+                        MondayTimelineColumnInfo deadline = objectMapper.readValue(columnValue.getValue(),
+                            MondayTimelineColumnInfo.class);
+                        mondayItemsRepository.save(savedItem.updateDeadline(deadline.getFrom(), deadline.getTo()));
+                        continue;
+                    }
+
+                    if (columnValue.getColumn().getTitle().equals("상태") && columnValue.getValue() != null){
+                        MondayStatusColumnInfo status = objectMapper.readValue(columnValue.getValue(),
+                            MondayStatusColumnInfo.class);
+                        Integer index = status.getIndex();
+
+                        MondayStatusInfo statusInfo = objectMapper.readValue(columnValue.getColumn().getSettings_str(),
+                            MondayStatusInfo.class);
+                        log.info("statusInfo : {}", statusInfo.toString());
+                        log.info("index : {}", index.toString());
+
+                        if (statusInfo.getLabels().get(index.toString()) != null && statusInfo.getLabels().get(index.toString()).equals("진행완료")) {
+                            mondayItemsRepository.save(savedItem.updateStatus("완료"));
+                        } else {
+                            mondayItemsRepository.save(savedItem.updateStatus("미완료"));
+                        }
+                    }
                 }
             }
 
@@ -657,7 +694,8 @@ public class MondayService {
         } while (cursor != null);
     }
 
-    public void syncBoardsWithItems(List<Long> mondayConfigurationIds) {
+    public void syncBoardsWithItems(List<Long> mondayConfigurationIds)
+        throws JsonProcessingException {
         for (Long id : mondayConfigurationIds) {
             MondayConfigurations mondayConfiguration = mondayConfigurationsRepository.findById(id)
                 .get();
@@ -665,6 +703,8 @@ public class MondayService {
             for (GetAllMondayBoardsDto board : mondayBoards) {
                 MondayBoards savedBoard = mondayBoardsRepository.save(MondayBoards.builder()
                     .id(board.getId())
+                    .name(board.getName())
+                    .updatedAt(board.getUpdatedAt())
                     .build());
                 mondayConfigurationsBoardsRepository.save(MondayConfigurationsBoards.builder()
                     .mondayConfiguration(mondayConfiguration)
@@ -699,10 +739,14 @@ public class MondayService {
                 }
 
                 for (MondayGetAllUpdatesWithCommentRes.Update update : updates.getData().getUpdates()) {
+                    MondayItems item = mondayItemsRepository.findByUniqueId(update.getItem_id()).get(0);
                     MondayUpdates savedUpdate = mondayUpdatesRepository.save(MondayUpdates.builder()
                         .id(update.getId())
-                        .mondayItem(mondayItemsRepository.findById(update.getItem_id()).get())
+                        .mondayItem(item)
                         .mondayCreatorUser(mondayUsersRepository.findById(update.getCreator_id()).get())
+                        .createdAt(update.getCreated_at())
+                        .content(update.getText_body())
+                        .updatedAt(update.getUpdated_at())
                         .build());
 
                     for (MondayGetAllUpdatesWithCommentRes.Reply reply : update.getReplies()) {
@@ -711,6 +755,9 @@ public class MondayService {
                             .mondayUpdate(savedUpdate)
                             .mondayCreatorUser(
                                 mondayUsersRepository.findById(reply.getCreator_id()).get())
+                            .createdAt(reply.getCreated_at())
+                            .updatedAt(reply.getUpdated_at())
+                            .content(reply.getText_body())
                             .build());
                     }
                 }

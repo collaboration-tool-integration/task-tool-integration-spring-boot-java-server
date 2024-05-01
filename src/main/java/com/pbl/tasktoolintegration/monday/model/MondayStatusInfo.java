@@ -1,4 +1,4 @@
-package com.pbl.tasktoolintegration.monday.legacy.model;
+package com.pbl.tasktoolintegration.monday.model;
 
 import java.util.Map;
 import lombok.Data;

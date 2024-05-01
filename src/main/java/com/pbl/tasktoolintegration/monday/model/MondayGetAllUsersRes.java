@@ -28,6 +28,5 @@ public class MondayGetAllUsersRes {
         private String name;
         private String phone;
         private String title;
-        private String url;
     }
 }

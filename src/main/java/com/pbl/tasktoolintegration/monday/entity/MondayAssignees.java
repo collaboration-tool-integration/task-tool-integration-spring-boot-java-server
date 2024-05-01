@@ -4,8 +4,10 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinColumns;
 import jakarta.persistence.ManyToOne;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -13,9 +15,13 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = lombok.AccessLevel.PROTECTED)
 @IdClass(MondayAssigneesId.class)
-public class MondayAssignees {
+@EqualsAndHashCode
+public class MondayAssignees implements java.io.Serializable {
     @ManyToOne
-    @JoinColumn(name = "monday_item_id")
+    @JoinColumns({
+        @JoinColumn(name = "monday_item_id", referencedColumnName = "id"),
+        @JoinColumn(name = "monday_board_id", referencedColumnName = "monday_board_id")
+    })
     @Id
     private MondayItems mondayItem;
 
