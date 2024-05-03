@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -25,19 +26,8 @@ public class MondayController {
     }
 
     @GetMapping("/response-time")
-    public ResponseEntity<List<GetUserResponseTimeRes>> getUserResponseTime(){
-        List<GetUsersAverageResponseTimeDto> usersAverageResponseTime = mondayService.getUsersAverageResponseTime();
-
-        List<GetUserResponseTimeRes> response = usersAverageResponseTime.stream()
-            .map(GetUserResponseTimeRes::from)
-            .toList();
-
-        return new ResponseEntity(response, HttpStatus.OK);
-    }
-
-    @GetMapping("/batch/response-time")
-    public ResponseEntity<List<GetUserResponseTimeRes>> getBatchUserResponseTime(){
-        List<GetUsersAverageResponseTimeDto> usersAverageResponseTime = mondayService.getBatchUsersAverageResponseTime();
+    public ResponseEntity<List<GetUserResponseTimeRes>> getUserResponseTime(@RequestParam Long id){
+        List<GetUsersAverageResponseTimeDto> usersAverageResponseTime = mondayService.getUsersAverageResponseTime(id);
 
         List<GetUserResponseTimeRes> response = usersAverageResponseTime.stream()
             .map(GetUserResponseTimeRes::from)
@@ -47,9 +37,9 @@ public class MondayController {
     }
 
     @GetMapping("/expired-item")
-    public ResponseEntity<List<GetUserExpiredItemRes>> getUserExpiredItem()
-        throws JsonProcessingException {
-        List<GetUserExpiredItemDto> usersExpiredItem = mondayService.getUsersExpiredItem();
+    public ResponseEntity<List<GetUserExpiredItemRes>> getUserExpiredItem(@RequestParam Long id)
+        {
+        List<GetUserExpiredItemDto> usersExpiredItem = mondayService.getUsersExpiredItem(id);
 
         List<GetUserExpiredItemRes> response = usersExpiredItem.stream()
             .map(GetUserExpiredItemRes::from)

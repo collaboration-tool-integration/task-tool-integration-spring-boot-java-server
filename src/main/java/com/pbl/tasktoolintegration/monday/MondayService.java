@@ -23,6 +23,7 @@ import com.pbl.tasktoolintegration.monday.legacy.model.GetAllUsersMondayRes;
 import com.pbl.tasktoolintegration.monday.legacy.model.GetStatusColumnIdInBoardWithSuccessIndexDto;
 import com.pbl.tasktoolintegration.monday.legacy.model.GetUserAssignedItemsMondayRes;
 import com.pbl.tasktoolintegration.monday.legacy.model.GetUserExpiredItemDto;
+import com.pbl.tasktoolintegration.monday.legacy.model.GetUserResponseTimeRes;
 import com.pbl.tasktoolintegration.monday.legacy.model.GetUsersAverageResponseTimeDto;
 import com.pbl.tasktoolintegration.monday.model.MondayAssigneeInfo;
 import com.pbl.tasktoolintegration.monday.legacy.model.MondayStatusColumnInfo;
@@ -89,7 +90,7 @@ public class MondayService {
 
     private List<String> getMentionedUsersInString(String text) {
         List<String> mentionedUsers = new ArrayList<>();
-        String[] words = text.split(" ");
+        String[] words = text.split("\\s+|\\n");
         for (String word : words) {
             if (!word.isEmpty() && word.charAt(0) == '@'
                 && !mentionedUsers.contains(word.substring(1))) {
@@ -102,60 +103,6 @@ public class MondayService {
     private int calculateResponseTime(Date startDate, Date endDate) {
         long diff = endDate.getTime() - startDate.getTime();
         return (int) (diff / 1000);
-    }
-
-    public void syncUsers() {
-        GetAllUsersMondayRes mondayUsers = getMondayUsers();
-
-        for (GetAllUsersMondayRes.User user : mondayUsers.getData().getUsers()) {
-            Optional<MondayUser> mondayUser = mondayUserRepository.findById(user.getId());
-            if (mondayUser.isPresent()) {
-                mondayUser.get().updateName(user.getName());
-                mondayUserRepository.save(mondayUser.get());
-            } else {
-                mondayUserRepository.save(MondayUser.builder()
-                    .id(user.getId())
-                    .name(user.getName())
-                    .build());
-            }
-        }
-    }
-
-    public void syncUpdates() {
-        GetAllUpdatesMondayRes mondayUpdates = getMondayUpdates();
-
-        for (GetAllUpdatesMondayRes.Update update : mondayUpdates.getData().getUpdates()) {
-            Optional<MondayUpdate> mondayUpdate = mondayUpdateRepository.findById(update.getId());
-            if (mondayUpdate.isPresent()) {
-                if (mondayUpdate.get().getUpdatedAt().before(update.getUpdated_at())) {
-                    mondayUpdate.get().updateContent(update.getText_body());
-                    mondayUpdate.get().updateUpdatedAt(update.getUpdated_at());
-                    mondayUpdateRepository.save(mondayUpdate.get());
-                }
-            } else {
-                mondayUpdateRepository.save(MondayUpdate.builder()
-                    .id(update.getId())
-                    .content(update.getText_body())
-                    .createdAt(update.getCreated_at())
-                    .updatedAt(update.getUpdated_at())
-                    .creator(mondayUserRepository.findById(update.getCreator().getId()).get())
-                    .build());
-            }
-
-            // 댓글 업데이트
-            for (GetAllUpdatesMondayRes.Reply reply : update.getReplies()) {
-                Optional<MondayComment> mondayComment = mondayCommentRepository.findById(
-                    reply.getId());
-                if (!mondayComment.isPresent()) {
-                    mondayCommentRepository.save(MondayComment.builder()
-                        .id(reply.getId())
-                        .createdAt(reply.getCreated_at())
-                        .creator(mondayUserRepository.findById(reply.getCreator().getId()).get())
-                        .update(mondayUpdateRepository.findById(update.getId()).get())
-                        .build());
-                }
-            }
-        }
     }
 
     // TODO: page 처리, 삭제 대응
@@ -182,39 +129,34 @@ public class MondayService {
             .block();
     }
 
-    public List<GetUsersAverageResponseTimeDto> getUsersAverageResponseTime() {
-        // 전체 유저 조회
-        GetAllUsersMondayRes mondayUsers = getMondayUsers();
+    public List<GetUsersAverageResponseTimeDto> getUsersAverageResponseTime(Long id) {
+        MondayConfigurations config = mondayConfigurationsRepository.findById(id).get();
+        List<MondayUsers> mondayUsers = mondayConfigurationsUsersRepository.findByMondayConfiguration(config).stream()
+            .map(MondayConfigurationsUsers::getMondayUser)
+            .collect(Collectors.toList());
+        List<String> mondayBoardIds = mondayConfigurationsBoardsRepository.findByMondayConfiguration(config).stream()
+            .map(MondayConfigurationsBoards::getMondayBoard)
+            .map(MondayBoards::getId)
+            .collect(Collectors.toList());
 
-        // 유저 이름과 1차 응답 시간을 저장할 맵 생성, 초기화
-        Map<String, String> usernameMap = new HashMap<>();
         Map<String, List<Integer>> userResponseTimeMap = new HashMap<>();
-        for (GetAllUsersMondayRes.User user : mondayUsers.getData().getUsers()) {
-            usernameMap.put(user.getId(), user.getName());
-            userResponseTimeMap.put(user.getId(), new ArrayList<>());
+        for (MondayUsers user : mondayUsers) {
+            userResponseTimeMap.put(user.getName(), new ArrayList<>());
         }
 
-        // 모든 업데이트 조회
-        GetAllUpdatesMondayRes mondayUpdates = getMondayUpdates();
+        List<MondayUpdates> mondayUpdates = mondayUpdatesRepository.findByMondayBoardId(mondayBoardIds);
 
-        for (GetAllUpdatesMondayRes.Update update : mondayUpdates.getData().getUpdates()) {
-            // update에 언급된 유저 찾기
-            List<String> mentionedUsers = getMentionedUsersInString(update.getText_body());
-
-            // update 내용에 유저 언급이 있을 경우
-            if (mentionedUsers.size() > 0) {
-                // 언급 시간
-                Date startDate = update.getCreated_at();
-                // 최초 1회 응답이기 때문에 모든 언급 유저를 leftUsers에 저장 후 답장한 경우 pop
+        for (MondayUpdates update : mondayUpdates) {
+            List<String> mentionedUsers = getMentionedUsersInString(update.getContent());
+            if (!mentionedUsers.isEmpty()) {
+                Date startDate = update.getCreatedAt();
                 List<String> leftUsers = new ArrayList<>(mentionedUsers);
-                // 답장했는지 순회하며 탐색
-                for (GetAllUpdatesMondayRes.Reply reply : update.getReplies()) {
-                    if (mentionedUsers.contains(reply.getCreator().getName())) {
-                        // 답장 시간 계산
-                        int diffSeconds = calculateResponseTime(startDate, reply.getCreated_at());
-
-                        userResponseTimeMap.get(reply.getCreator().getId()).add(diffSeconds);
-                        leftUsers.remove(reply.getCreator().getName());
+                List<MondayComments> mondayComments = mondayCommentsRepository.findByMondayUpdate(update);
+                for (MondayComments comment : mondayComments) {
+                    if (mentionedUsers.contains(comment.getMondayCreatorUser().getName()) && leftUsers.contains(comment.getMondayCreatorUser().getName())){
+                        int diffSeconds = calculateResponseTime(startDate, comment.getCreatedAt());
+                        userResponseTimeMap.get(comment.getMondayCreatorUser().getName()).add(diffSeconds);
+                        leftUsers.remove(comment.getMondayCreatorUser().getName());
                     }
                 }
             }
@@ -234,55 +176,7 @@ public class MondayService {
             }
             int average = sum / responseTimes.size();
             usersAverageResponseTime.add(GetUsersAverageResponseTimeDto.builder()
-                .username(usernameMap.get(userId))
-                .averageResponseTime(average)
-                .build());
-        }
-
-        return usersAverageResponseTime;
-    }
-
-    public List<GetUsersAverageResponseTimeDto> getBatchUsersAverageResponseTime() {
-        List<MondayUser> mondayUsers = mondayUserRepository.findAll();
-
-        Map<String, List<Integer>> userResponseTimeMap = new HashMap<>();
-        for (MondayUser user : mondayUsers) {
-            userResponseTimeMap.put(user.getId(), new ArrayList<>());
-        }
-
-        List<MondayUpdate> mondayUpdates = mondayUpdateRepository.findAll();
-
-        for (MondayUpdate update : mondayUpdates) {
-            List<String> mentionedUsers = getMentionedUsersInString(update.getContent());
-            if (!mentionedUsers.isEmpty()) {
-                Date startDate = update.getCreatedAt();
-                List<String> leftUsers = new ArrayList<>(mentionedUsers);
-                List<MondayComment> mondayComments = mondayCommentRepository.findByUpdate(update);
-                for (MondayComment comment : mondayComments) {
-                    if (mentionedUsers.contains(comment.getCreator().getName())) {
-                        int diffSeconds = calculateResponseTime(startDate, comment.getCreatedAt());
-                        userResponseTimeMap.get(comment.getCreator().getId()).add(diffSeconds);
-                        leftUsers.remove(comment.getCreator().getName());
-                    }
-                }
-            }
-        }
-
-        List<GetUsersAverageResponseTimeDto> usersAverageResponseTime = new ArrayList<>();
-        for (String userId : userResponseTimeMap.keySet()) {
-            List<Integer> responseTimes = userResponseTimeMap.get(userId);
-            // 응답한 기록이 없는 경우 분석 불가
-            if (responseTimes.size() == 0) {
-                continue;
-            }
-
-            int sum = 0;
-            for (int responseTime : responseTimes) {
-                sum += responseTime;
-            }
-            int average = sum / responseTimes.size();
-            usersAverageResponseTime.add(GetUsersAverageResponseTimeDto.builder()
-                .username(mondayUserRepository.findById(userId).get().getName())
+                .username(userId)
                 .averageResponseTime(average)
                 .build());
         }
@@ -413,7 +307,30 @@ public class MondayService {
         return false;
     }
 
-    public List<GetUserExpiredItemDto> getUsersExpiredItem() throws JsonProcessingException {
+    public List<GetUserExpiredItemDto> getUsersExpiredItem(Long configId) {
+        List<MondayUsers> mondayUsers = mondayConfigurationsUsersRepository.findByMondayConfiguration(mondayConfigurationsRepository.findById(configId).get()).stream()
+            .map(MondayConfigurationsUsers::getMondayUser)
+            .collect(Collectors.toList());
+        Map<String, Integer > userExpiredItemCount = new HashMap<>();
+
+        for (MondayUsers user : mondayUsers) {
+            List<MondayItems> mondayItems = mondayAssigneesRepository.findByMondayUserAndMondayItem_StatusAndMondayItem_DeadlineToLessThan(user, "미완료", new Date()).stream()
+                .map(MondayAssignees::getMondayItem)
+                .collect(Collectors.toList());
+
+            userExpiredItemCount.put(user.getName(), mondayItems.size());
+        }
+
+
+        return userExpiredItemCount.entrySet().stream()
+            .map(entry -> GetUserExpiredItemDto.builder()
+                .username(entry.getKey())
+                .totalExpiredItems(entry.getValue())
+                .build())
+            .collect(Collectors.toList());
+    }
+
+    public List<GetUserExpiredItemDto> getUsersExpiredItemOld() throws JsonProcessingException {
         GetAllUsersMondayRes mondayUsers = getMondayUsers();
         // 보드와 해당 보드에 존재하는 컬럼에 대한 정보 조회
         GetAllBoardsWithColumnsMondayRes mondayBoards = getAllBoardsWithColumns();
@@ -678,8 +595,6 @@ public class MondayService {
 
                         MondayStatusInfo statusInfo = objectMapper.readValue(columnValue.getColumn().getSettings_str(),
                             MondayStatusInfo.class);
-                        log.info("statusInfo : {}", statusInfo.toString());
-                        log.info("index : {}", index.toString());
 
                         if (statusInfo.getLabels().get(index.toString()) != null && statusInfo.getLabels().get(index.toString()).equals("진행완료")) {
                             mondayItemsRepository.save(savedItem.updateStatus("완료"));

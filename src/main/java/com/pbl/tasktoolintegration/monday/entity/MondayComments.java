@@ -35,6 +35,7 @@ public class MondayComments implements java.io.Serializable {
     @JoinColumn(name = "monday_creator_user_id")
     private MondayUsers mondayCreatorUser;
 
+
     @Column(name = "created_at")
     private Date createdAt;
 
