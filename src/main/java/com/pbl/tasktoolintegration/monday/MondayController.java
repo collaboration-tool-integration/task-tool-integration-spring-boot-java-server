@@ -1,10 +1,9 @@
 package com.pbl.tasktoolintegration.monday;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.pbl.tasktoolintegration.monday.legacy.model.GetUserExpiredItemDto;
-import com.pbl.tasktoolintegration.monday.legacy.model.GetUserExpiredItemRes;
-import com.pbl.tasktoolintegration.monday.legacy.model.GetUserResponseTimeRes;
-import com.pbl.tasktoolintegration.monday.legacy.model.GetUsersAverageResponseTimeDto;
+import com.pbl.tasktoolintegration.monday.model.GetUserExpiredItemDto;
+import com.pbl.tasktoolintegration.monday.model.GetUserExpiredItemRes;
+import com.pbl.tasktoolintegration.monday.model.GetUserResponseTimeRes;
+import com.pbl.tasktoolintegration.monday.model.GetUsersAverageResponseTimeDto;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,18 +39,6 @@ public class MondayController {
     public ResponseEntity<List<GetUserExpiredItemRes>> getUserExpiredItem(@RequestParam Long id)
         {
         List<GetUserExpiredItemDto> usersExpiredItem = mondayService.getUsersExpiredItem(id);
-
-        List<GetUserExpiredItemRes> response = usersExpiredItem.stream()
-            .map(GetUserExpiredItemRes::from)
-            .toList();
-
-        return new ResponseEntity(response, HttpStatus.OK);
-    }
-
-    @GetMapping("/batch/expired-item")
-    public ResponseEntity<List<GetUserExpiredItemRes>> getBatchUserExpiredItem()
-        throws JsonProcessingException {
-        List<GetUserExpiredItemDto> usersExpiredItem = mondayService.getBatchUsersExpiredItem();
 
         List<GetUserExpiredItemRes> response = usersExpiredItem.stream()
             .map(GetUserExpiredItemRes::from)
