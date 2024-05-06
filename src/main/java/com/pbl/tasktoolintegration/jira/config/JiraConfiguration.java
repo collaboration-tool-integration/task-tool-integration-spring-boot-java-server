@@ -2,7 +2,6 @@ package com.pbl.tasktoolintegration.jira.config;
 
 import com.atlassian.adf.jackson2.AdfJackson2;
 import com.atlassian.adf.model.node.Doc;
-import com.atlassian.adf.model.node.Node;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
@@ -14,12 +13,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.json.Jackson2JsonDecoder;
 import org.springframework.http.codec.json.Jackson2JsonEncoder;
-import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
 
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @Configuration
@@ -34,14 +30,19 @@ public class JiraConfiguration {
     @Value("${jira.api-token}")
     private String jiraApiToken;
 
-    @Bean
-    public WebClient jiraWebClient() {
+    @Bean(name = "jiraObjectMapper")
+    public ObjectMapper objectMapper() {
         SimpleModule simpleModule = new SimpleModule()
                 .addDeserializer(Doc.class, new ADFDeserializer());
-        ObjectMapper objectMapper = new AdfJackson2().mapper()
+        return new AdfJackson2().mapper()
                 .registerModule(new JavaTimeModule())
                 .registerModule(simpleModule)
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    }
+
+    @Bean
+    public WebClient jiraWebClient() {
+        ObjectMapper objectMapper = this.objectMapper();
         ExchangeStrategies exchangeStrategies = ExchangeStrategies
                 .builder()
                 .codecs(clientCodecConfigurer -> {
@@ -60,14 +61,14 @@ public class JiraConfiguration {
                             httpHeaders.setBasicAuth(jiraAuthEmail, jiraApiToken);
                         }
                 )
-                .filter(ExchangeFilterFunction.ofResponseProcessor(
-                        clientResponse -> Mono.just(clientResponse.mutate()
-                                .body(dataBufferFlux -> dataBufferFlux.map(dataBuffer -> {
-                                    log.info(dataBuffer.toString(StandardCharsets.UTF_8));
-                                    return dataBuffer;
-                                }))
-                                .build())
-                ))
+//                .filter(ExchangeFilterFunction.ofResponseProcessor(
+//                        clientResponse -> Mono.just(clientResponse.mutate()
+//                                .body(dataBufferFlux -> dataBufferFlux.map(dataBuffer -> {
+//                                    log.info(dataBuffer.toString(StandardCharsets.UTF_8));
+//                                    return dataBuffer;
+//                                }))
+//                                .build())
+//                ))
                 .build();
     }
 }

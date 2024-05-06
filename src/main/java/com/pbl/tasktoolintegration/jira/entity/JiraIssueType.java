@@ -1,7 +1,10 @@
 package com.pbl.tasktoolintegration.jira.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.RequiredArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,6 +12,9 @@ import java.util.List;
 @Data
 @Entity
 @Table(name = "JiraIssueType", indexes = @Index(columnList = "jiraProjectId, jiraId", unique = true))
+@Builder
+@RequiredArgsConstructor
+@AllArgsConstructor
 public class JiraIssueType {
     // DB 고유 ID
     @Id
@@ -45,6 +51,9 @@ public class JiraIssueType {
     @ManyToOne
     @JoinColumn(name = "jiraProjectId")
     private JiraProject jiraProject;
+
+    @OneToMany(mappedBy = "jiraIssueType")
+    private List<JiraStatus> jiraStatusList = new ArrayList<>();
 
     @OneToMany(mappedBy = "jiraIssueType")
     private List<JiraIssue> jiraIssueList = new ArrayList<>();

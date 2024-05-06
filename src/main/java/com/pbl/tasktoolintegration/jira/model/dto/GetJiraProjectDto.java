@@ -1,10 +1,12 @@
 package com.pbl.tasktoolintegration.jira.model.dto;
 
-import java.util.List;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.pbl.tasktoolintegration.jira.entity.JiraProject;
+import com.pbl.tasktoolintegration.jira.entity.JiraProjectKey;
 import com.pbl.tasktoolintegration.jira.entity.JiraUser;
 import lombok.Getter;
+
+import java.util.List;
 
 @Getter
 public class GetJiraProjectDto {
@@ -27,7 +29,7 @@ public class GetJiraProjectDto {
 	private GetJiraUserDto lead;
 
 	@JsonProperty("issueTypes")
-	private List<IssueTypesItem> issueTypes;
+	private List<GetJiraIssueTypeDto> issueTypes;
 
 	@JsonProperty("expand")
 	private String expand;
@@ -57,7 +59,7 @@ public class GetJiraProjectDto {
 	private String key;
 
 	public JiraProject to(JiraUser jiraUser) {
-		return JiraProject.builder()
+		JiraProject project = JiraProject.builder()
 				.jiraUuid(uuid)
 				.jiraId(Long.parseLong(id))
 				.name(name)
@@ -68,5 +70,16 @@ public class GetJiraProjectDto {
 				.simplified(simplified)
 				.leadUser(jiraUser)
 				.build();
+
+		List<JiraProjectKey> projectKeyList = projectKeys.stream()
+				.map(projectKey -> JiraProjectKey.builder()
+						.key(projectKey)
+						.jiraProject(project)
+						.build())
+				.toList();
+
+		project.setJiraProjectKeyList(projectKeyList);
+
+		return project;
 	}
 }

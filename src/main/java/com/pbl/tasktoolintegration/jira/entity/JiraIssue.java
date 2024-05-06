@@ -1,7 +1,12 @@
 package com.pbl.tasktoolintegration.jira.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.RequiredArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -11,6 +16,9 @@ import java.util.List;
 @Data
 @Entity
 @Table(name = "JiraIssue", indexes = @Index(columnList = "jiraProjectId, jiraId", unique = true))
+@Builder
+@RequiredArgsConstructor
+@AllArgsConstructor
 public class JiraIssue {
     // DB 고유 ID
     @Id
@@ -33,11 +41,12 @@ public class JiraIssue {
     private LocalDate duedate;
 
     // 이슈 상세 내용
-    @Lob
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "JSON")
     private String description;
 
     // 이슈 중요도
-    private Integer issuePriority;
+    private String issuePriority;
 
     // 생성일자
     @Column(nullable = false)
@@ -53,6 +62,10 @@ public class JiraIssue {
     @ManyToOne
     @JoinColumn(name = "creatorUserId")
     private JiraUser creatorUser;
+
+    @ManyToOne
+    @JoinColumn(name = "reportUserId")
+    private JiraUser reportUser;
 
     // Jira Issue Type
     @ManyToOne
@@ -76,7 +89,7 @@ public class JiraIssue {
     @OneToMany(mappedBy = "parentIssue")
     private List<JiraIssue> childIssueList = new ArrayList<>();
 
-    @OneToMany(mappedBy = "jiraIssue")
+    @OneToMany(mappedBy = "jiraIssue", cascade = CascadeType.PERSIST)
     private List<JiraComment> jiraCommentList = new ArrayList<>();
 
     // Issue History
@@ -87,4 +100,7 @@ public class JiraIssue {
     @OneToMany(mappedBy = "jiraIssue")
     private List<JiraCommentHistory> jiraCommentHistoryList = new ArrayList<>();
 
+    public void setJiraCommentList(List<JiraComment> jiraCommentList) {
+        this.jiraCommentList = jiraCommentList;
+    }
 }

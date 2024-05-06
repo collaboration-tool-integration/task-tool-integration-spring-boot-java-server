@@ -31,7 +31,6 @@ public class JiraIssueHistory {
     private LocalDate duedate;
 
     // 이슈 상세 내용
-    @Lob
     private String description;
 
     // 이슈 중요도

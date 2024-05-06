@@ -6,12 +6,12 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @Entity
-@Table(name = "JiraUser", indexes = @Index(name = "idx_jira_account_id", columnList = "jiraAccountId", unique = true))
+@Table(name = "JiraUser", indexes = @Index(columnList = "jiraAccountId", unique = true))
 @RequiredArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -47,10 +47,13 @@ public class JiraUser {
 
 
     @OneToMany(mappedBy = "assigneeUser")
-    private List<JiraIssue> assigneeJiraIssueList = new ArrayList<>();
+    private List<JiraIssue> assignJiraIssueList = new ArrayList<>();
 
     @OneToMany(mappedBy = "creatorUser")
-    private List<JiraIssue> creatorJiraIssueList = new ArrayList<>();
+    private List<JiraIssue> createJiraIssueList = new ArrayList<>();
+
+    @OneToMany(mappedBy = "reportUser")
+    private List<JiraIssue> reportJiraIssueList = new ArrayList<>();
 
     @OneToMany(mappedBy = "assigneeUser")
     private List<JiraIssueHistory> assigneeJiraIssueHistoryList = new ArrayList<>();

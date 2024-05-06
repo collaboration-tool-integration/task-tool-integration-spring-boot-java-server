@@ -12,15 +12,21 @@ spring:
     url: jdbc:postgresql://${DB_HOST}:5432/${DB_NAME}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
+    dbcp2:
   jpa:
     show-sql: true
     hibernate:
-      ddl-auto: update
       properties:
         hibernate:
           format_sql: true
       naming:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+      ddl-auto: update
+    database: postgresql
+    properties:
+      hibernate:
+        default_schema: tasktool
+
 server:
   port: 9090 # docker desktop과 충돌을 피하기 위해 포트 변경
 

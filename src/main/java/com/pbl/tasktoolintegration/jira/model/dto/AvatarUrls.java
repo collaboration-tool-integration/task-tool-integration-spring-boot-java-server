@@ -4,8 +4,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 
 @Getter
-public class AvatarUrls{
-
+public class AvatarUrls {
+	
 	@JsonProperty("48x48")
 	private String jsonMember48x48;
 

@@ -7,8 +7,8 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @Entity
@@ -77,4 +77,12 @@ public class JiraProject {
 
     @OneToMany(mappedBy = "jiraProject")
     private List<JiraStatus> jiraStatus;
+
+    @OneToMany(mappedBy = "jiraProject", cascade = CascadeType.PERSIST)
+    private List<JiraProjectKey> jiraProjectKeyList;
+
+
+    public void setJiraProjectKeyList(List<JiraProjectKey> jiraProjectKeyList) {
+        this.jiraProjectKeyList = jiraProjectKeyList;
+    }
 }
