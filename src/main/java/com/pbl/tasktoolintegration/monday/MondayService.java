@@ -14,6 +14,7 @@ import com.pbl.tasktoolintegration.monday.entity.MondayUpdates;
 import com.pbl.tasktoolintegration.monday.entity.MondayUsers;
 import com.pbl.tasktoolintegration.monday.model.GetUserExpiredItemDto;
 import com.pbl.tasktoolintegration.monday.model.GetUsersAverageResponseTimeDto;
+import com.pbl.tasktoolintegration.monday.model.GetUsersAverageResponseTimeDto.ResponseTimeOfUser;
 import com.pbl.tasktoolintegration.monday.model.MondayAssigneeInfo;
 import com.pbl.tasktoolintegration.monday.model.MondayStatusColumnInfo;
 import com.pbl.tasktoolintegration.monday.model.MondayStatusInfo;
@@ -85,55 +86,73 @@ public class MondayService {
 
     public List<GetUsersAverageResponseTimeDto> getUsersAverageResponseTime(Long id) {
         MondayConfigurations config = mondayConfigurationsRepository.findById(id).get();
-        List<MondayUsers> mondayUsers = mondayConfigurationsUsersRepository.findByMondayConfiguration(config).stream()
-            .map(MondayConfigurationsUsers::getMondayUser)
-            .collect(Collectors.toList());
+        List<GetUsersAverageResponseTimeDto> usersAverageResponseTime = new ArrayList<>();
+
         List<String> mondayBoardIds = mondayConfigurationsBoardsRepository.findByMondayConfiguration(config).stream()
             .map(MondayConfigurationsBoards::getMondayBoard)
             .map(MondayBoards::getId)
             .collect(Collectors.toList());
 
-        Map<String, List<Integer>> userResponseTimeMap = new HashMap<>();
-        for (MondayUsers user : mondayUsers) {
-            userResponseTimeMap.put(user.getName(), new ArrayList<>());
-        }
+        for (String boardId : mondayBoardIds) {
+            List<MondayUsers> mondayUsers = mondayBoardsSubscribersRepository.findByMondayBoardId(boardId).stream()
+                .map(MondayBoardsSubscribers::getMondayUser)
+                .collect(Collectors.toList());
 
-        List<MondayUpdates> mondayUpdates = mondayUpdatesRepository.findByMondayBoardId(mondayBoardIds);
+            MondayBoards mondayBoard = mondayBoardsRepository.findById(boardId).get();
 
-        for (MondayUpdates update : mondayUpdates) {
-            List<String> mentionedUsers = getMentionedUsersInString(update.getContent());
-            if (!mentionedUsers.isEmpty()) {
-                Date startDate = update.getCreatedAt();
-                List<String> leftUsers = new ArrayList<>(mentionedUsers);
-                List<MondayComments> mondayComments = mondayCommentsRepository.findByMondayUpdate(update);
-                for (MondayComments comment : mondayComments) {
-                    if (mentionedUsers.contains(comment.getMondayCreatorUser().getName()) && leftUsers.contains(comment.getMondayCreatorUser().getName())){
-                        int diffSeconds = calculateResponseTime(startDate, comment.getCreatedAt());
-                        userResponseTimeMap.get(comment.getMondayCreatorUser().getName()).add(diffSeconds);
-                        leftUsers.remove(comment.getMondayCreatorUser().getName());
+            Map<String, List<Integer>> userResponseTimeMap = new HashMap<>();
+            for (MondayUsers user : mondayUsers) {
+                userResponseTimeMap.put(user.getName(), new ArrayList<>());
+            }
+
+            List<MondayUpdates> mondayUpdates = mondayUpdatesRepository.findByMondayBoardId(boardId);
+
+            for (MondayUpdates update : mondayUpdates) {
+                List<String> mentionedUsers = getMentionedUsersInString(update.getContent());
+                if (!mentionedUsers.isEmpty()) {
+                    Date startDate = update.getCreatedAt();
+                    List<String> leftUsers = new ArrayList<>(mentionedUsers);
+                    List<MondayComments> mondayComments = mondayCommentsRepository.findByMondayUpdate(update);
+                    for (MondayComments comment : mondayComments) {
+                        if (mentionedUsers.contains(comment.getMondayCreatorUser().getName()) && leftUsers.contains(comment.getMondayCreatorUser().getName())){
+                            int diffSeconds = calculateResponseTime(startDate, comment.getCreatedAt());
+
+                            // 현재 삭제된 유저의 경우에는 현재 구독자로 남아있지 않으며 언급은 되어있을 수 있기 때문에 체크
+                            if (userResponseTimeMap.containsKey(comment.getMondayCreatorUser().getName())) {
+                                userResponseTimeMap.get(comment.getMondayCreatorUser().getName()).add(diffSeconds);
+                                leftUsers.remove(comment.getMondayCreatorUser().getName());
+                            }
+                        }
                     }
                 }
             }
-        }
 
-        List<GetUsersAverageResponseTimeDto> usersAverageResponseTime = new ArrayList<>();
-        for (String userId : userResponseTimeMap.keySet()) {
-            List<Integer> responseTimes = userResponseTimeMap.get(userId);
-            // 응답한 기록이 없는 경우 분석 불가
-            if (responseTimes.isEmpty()) {
-                continue;
+            List<ResponseTimeOfUser> responseTimeOfUsers = new ArrayList<>();
+
+            for (String userId : userResponseTimeMap.keySet()) {
+                List<Integer> responseTimes = userResponseTimeMap.get(userId);
+                // 응답한 기록이 없는 경우 분석 불가
+                if (responseTimes.isEmpty()) {
+                    continue;
+                }
+
+                int sum = 0;
+                for (int responseTime : responseTimes) {
+                    sum += responseTime;
+                }
+                int average = sum / responseTimes.size();
+                responseTimeOfUsers.add(ResponseTimeOfUser.builder()
+                    .username(userId)
+                    .averageResponseTime(average)
+                    .build());
             }
 
-            int sum = 0;
-            for (int responseTime : responseTimes) {
-                sum += responseTime;
-            }
-            int average = sum / responseTimes.size();
             usersAverageResponseTime.add(GetUsersAverageResponseTimeDto.builder()
-                .username(userId)
-                .averageResponseTime(average)
+                .boardName(mondayBoard.getName())
+                .responseTimeOfUsers(responseTimeOfUsers)
                 .build());
         }
+
         return usersAverageResponseTime;
     }
 

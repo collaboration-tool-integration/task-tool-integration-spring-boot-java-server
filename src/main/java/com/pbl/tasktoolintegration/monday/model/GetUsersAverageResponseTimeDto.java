@@ -1,6 +1,8 @@
 package com.pbl.tasktoolintegration.monday.model;
 
+import java.util.List;
 import lombok.Builder;
+import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
@@ -10,6 +12,13 @@ import lombok.ToString;
 @Builder
 @ToString
 public class GetUsersAverageResponseTimeDto {
-    private String username;
-    private double averageResponseTime;
+    private String boardName;
+    private List<ResponseTimeOfUser> responseTimeOfUsers;
+
+    @Data
+    @Builder
+    public static class ResponseTimeOfUser{
+        private String username;
+        private double averageResponseTime;
+    }
 }
