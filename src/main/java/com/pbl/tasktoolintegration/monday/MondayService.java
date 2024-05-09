@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pbl.tasktoolintegration.monday.entity.MondayAssignees;
 import com.pbl.tasktoolintegration.monday.entity.MondayBoards;
+import com.pbl.tasktoolintegration.monday.entity.MondayBoardsSubscribers;
 import com.pbl.tasktoolintegration.monday.entity.MondayComments;
 import com.pbl.tasktoolintegration.monday.entity.MondayConfigurations;
 import com.pbl.tasktoolintegration.monday.entity.MondayConfigurationsBoards;
@@ -25,6 +26,7 @@ import com.pbl.tasktoolintegration.monday.model.MondayGetAllUpdatesWithCommentRe
 import com.pbl.tasktoolintegration.monday.model.MondayGetAllUsersRes;
 import com.pbl.tasktoolintegration.monday.repository.MondayAssigneesRepository;
 import com.pbl.tasktoolintegration.monday.repository.MondayBoardsRepository;
+import com.pbl.tasktoolintegration.monday.repository.MondayBoardsSubscribersRepository;
 import com.pbl.tasktoolintegration.monday.repository.MondayCommentsRepository;
 import com.pbl.tasktoolintegration.monday.repository.MondayConfigurationsBoardsRepository;
 import com.pbl.tasktoolintegration.monday.repository.MondayConfigurationsRepository;
@@ -62,6 +64,7 @@ public class MondayService {
     private final MondayAssigneesRepository mondayAssigneesRepository;
     private final MondayCommentsRepository mondayCommentsRepository;
     private final MondayUpdatesRepository mondayUpdatesRepository;
+    private final MondayBoardsSubscribersRepository mondayBoardsSubscribersRepository;
 
     private List<String> getMentionedUsersInString(String text) {
         List<String> mentionedUsers = new ArrayList<>();
@@ -315,6 +318,14 @@ public class MondayService {
                     .mondayConfiguration(mondayConfiguration)
                     .mondayBoard(savedBoard)
                     .build());
+
+                List<MondayUsers> users = mondayUsersRepository.findByIdIn(board.getSubscriberIds());
+                for (MondayUsers user : users) {
+                    mondayBoardsSubscribersRepository.save(MondayBoardsSubscribers.builder()
+                        .mondayBoard(savedBoard)
+                        .mondayUser(user)
+                        .build());
+                }
 
                 syncItemsByBoardId(savedBoard.getId(), mondayConfiguration.getApiKey());
             }

@@ -5,6 +5,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -22,4 +23,10 @@ public class MondayBoardsSubscribers {
     @JoinColumn(name = "monday_user_id")
     @Id
     private MondayUsers mondayUser;
+
+    @Builder
+    public MondayBoardsSubscribers(MondayBoards mondayBoard, MondayUsers mondayUser) {
+        this.mondayBoard = mondayBoard;
+        this.mondayUser = mondayUser;
+    }
 }
