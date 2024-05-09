@@ -157,26 +157,45 @@ public class MondayService {
     }
 
     public List<GetUserExpiredItemDto> getUsersExpiredItem(Long configId) {
-        List<MondayUsers> mondayUsers = mondayConfigurationsUsersRepository.findByMondayConfiguration(mondayConfigurationsRepository.findById(configId).get()).stream()
-            .map(MondayConfigurationsUsers::getMondayUser)
+        List<MondayBoards> boards = mondayConfigurationsBoardsRepository.findByMondayConfiguration(mondayConfigurationsRepository.findById(configId).get()).stream()
+            .map(MondayConfigurationsBoards::getMondayBoard)
             .collect(Collectors.toList());
-        Map<String, Integer > userExpiredItemCount = new HashMap<>();
 
-        for (MondayUsers user : mondayUsers) {
-            List<MondayItems> mondayItems = mondayAssigneesRepository.findByMondayUserAndMondayItem_StatusAndMondayItem_DeadlineToLessThan(user, "미완료", new Date()).stream()
-                .map(MondayAssignees::getMondayItem)
+        List<GetUserExpiredItemDto> userExpiredItems = new ArrayList<>();
+
+        // 하위 아이템만 필터링 -> monday는 하위 아이템 묶음을 보드로 관리하기 때문에 이름으로 필터링
+        for (MondayBoards board : boards) {
+            if (!board.getName().contains("하위 아이템")) {
+                continue;
+            }
+            List<MondayUsers> mondayUsers = mondayBoardsSubscribersRepository.findByMondayBoardId(
+                    board.getId()).stream()
+                .map(MondayBoardsSubscribers::getMondayUser)
                 .collect(Collectors.toList());
 
-            userExpiredItemCount.put(user.getName(), mondayItems.size());
+            Map<String, Integer > userExpiredItemCount = new HashMap<>();
+
+            for (MondayUsers user : mondayUsers) {
+                List<MondayItems> mondayItems = mondayAssigneesRepository.findByMondayUserAndMondayItem_StatusAndMondayItem_DeadlineToLessThanAndMondayItem_MondayBoard(user, "미완료", new Date(), board).stream()
+                    .map(MondayAssignees::getMondayItem)
+                    .collect(Collectors.toList());
+
+                userExpiredItemCount.put(user.getName(), mondayItems.size());
+            }
+
+            userExpiredItems.add(GetUserExpiredItemDto.builder()
+                .boardName(board.getName())
+                .expiredItemsOfUsers(userExpiredItemCount.entrySet().stream()
+                    .map(entry -> GetUserExpiredItemDto.ExpiredItemsOfUser.builder()
+                        .username(entry.getKey())
+                        .totalExpiredItems(entry.getValue())
+                        .build())
+                    .collect(Collectors.toList()))
+                .build());
         }
 
 
-        return userExpiredItemCount.entrySet().stream()
-            .map(entry -> GetUserExpiredItemDto.builder()
-                .username(entry.getKey())
-                .totalExpiredItems(entry.getValue())
-                .build())
-            .collect(Collectors.toList());
+        return userExpiredItems;
     }
 
     public List<GetAllMondayUsersDto> getAllMondayUsers(String apiKey) {
