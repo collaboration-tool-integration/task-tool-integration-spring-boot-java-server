@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Data
 @Entity
@@ -72,4 +73,14 @@ public class JiraUser {
 
     @OneToMany(mappedBy = "updateAuthorUser")
     private List<JiraCommentHistory> updateAuthorJiraCommentHistoryList = new ArrayList<>();
+
+    @Override
+    public boolean equals(Object o) {
+        return o instanceof JiraUser && ((JiraUser) o).getJiraAccountId().equals(this.jiraAccountId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getJiraAccountId());
+    }
 }

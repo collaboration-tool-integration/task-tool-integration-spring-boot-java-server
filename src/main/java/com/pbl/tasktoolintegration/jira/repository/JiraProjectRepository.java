@@ -7,4 +7,5 @@ import java.util.Optional;
 
 public interface JiraProjectRepository extends JpaRepository<JiraProject, Long> {
     Optional<JiraProject> findByJiraId(Long jiraId);
+    Optional<JiraProject> findByJiraUuid(String uuid);
 }

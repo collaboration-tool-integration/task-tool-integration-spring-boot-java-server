@@ -1,5 +1,8 @@
 package com.pbl.tasktoolintegration.jira.entity;
 
+import com.atlassian.adf.jackson2.AdfJackson2;
+import com.atlassian.adf.model.node.Doc;
+import com.atlassian.adf.model.node.Mention;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -102,5 +105,25 @@ public class JiraIssue {
 
     public void setJiraCommentList(List<JiraComment> jiraCommentList) {
         this.jiraCommentList = jiraCommentList;
+    }
+
+    public Doc getDescription() {
+        return new AdfJackson2().unmarshall(description);
+    }
+
+    public List<String> getRelatedUserIdList() {
+        ArrayList<String> jiraUserList = new ArrayList<>();
+
+        // 담당자 추가
+        jiraUserList.add(assigneeUser.getJiraAccountId());
+
+        // 멘션 노드 전체 조회
+        getDescription().allNodesOfType(Mention.class)
+                .map(Mention::id)
+                .distinct()
+                .toList();
+
+
+        return jiraUserList;
     }
 }

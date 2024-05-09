@@ -1,17 +1,20 @@
 package com.pbl.tasktoolintegration.jira;
 
+import com.atlassian.adf.jackson2.AdfJackson2;
+import com.atlassian.adf.model.node.Mention;
 import com.pbl.tasktoolintegration.jira.entity.*;
 import com.pbl.tasktoolintegration.jira.model.dto.*;
 import com.pbl.tasktoolintegration.jira.repository.*;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.*;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -51,7 +54,7 @@ public class JiraService {
                 break;
 
             projectList.addAll(fetchProjectResult.getValues().stream()
-                    .filter(getJiraProjectDto -> jiraProjectRepository.findByJiraId(Long.getLong(getJiraProjectDto.getId())).isEmpty())
+                    .filter(getJiraProjectDto -> jiraProjectRepository.findByJiraUuid(getJiraProjectDto.getUuid()).isEmpty())
                     .map(getJiraProjectDto -> getJiraProjectDto.to(
                             getJiraProjectDto.getLead() != null && getJiraProjectDto.getLead().getAccountId() != null ?
                                     jiraUserRepository.findByJiraAccountId(getJiraProjectDto.getLead().getAccountId())
@@ -70,6 +73,102 @@ public class JiraService {
 
         // Issue 저장
         createdProjectList.forEach(this::saveJiraIssues);
+    }
+
+    @Transactional(readOnly = true)
+    public List<JiraResponseTimeDto> getJiraUserResponseTime(Long projectId) {
+        @Setter
+        @Getter
+        @AllArgsConstructor
+        class JiraUserIssueResponseTime {
+            private int totalRelatedIssueCount = 0;
+            private double totalTime = 0.0;
+
+            double getAverage() {
+                if (totalTime == 0 || totalRelatedIssueCount == 0) return 0.0;
+                return totalTime / totalRelatedIssueCount;
+            }
+        }
+
+        HashMap<JiraUser, JiraUserIssueResponseTime> responseTimeHashMap = new HashMap<>();
+        List<JiraIssue> jiraIssueList;
+
+        if (projectId != null) {
+            JiraProject jiraProject = jiraProjectRepository.findById(projectId).orElseThrow(() -> new RuntimeException("Not Found"));
+            jiraIssueList = jiraIssueRepository.findAllByJiraProjectAndDescriptionNotNullAndJiraCommentListNotEmpty(jiraProject);
+        }
+        else {
+            jiraIssueList = jiraIssueRepository.findAllByDescriptionNotNullAndJiraCommentListNotEmpty();
+        }
+
+        log.info("issue size: " + jiraIssueList.size());
+
+        // Issue Loop
+        for (JiraIssue jiraIssue : jiraIssueList) {
+            // Get Mention List from Issue
+            List<Mention> mentionList = jiraIssue.getDescription().allNodesOfType(Mention.class).toList();
+
+            // Get Related User List from Mention List
+            HashSet<JiraUser> userSet = new HashSet<>();
+
+            // added issue assignee user to list
+            if (jiraIssue.getAssigneeUser() != null) userSet.add(jiraIssue.getAssigneeUser());
+
+            // added mentioned user
+            userSet.addAll(getJiraUserListByMention(mentionList));
+
+            // issue loop
+            userSet.forEach(jiraUser -> {
+                        // Get User's First Comment
+                        Long responseTime = getJiraUserFirstResponseTimeInComment(jiraIssue.getCreated(), jiraIssue.getJiraCommentList(), jiraUser);
+
+                        // if responseTime not null
+                        if (responseTime != null) {
+                            // Find Same User in Hashmap
+                            if (responseTimeHashMap.containsKey(jiraUser)) {
+                                // get original
+                                JiraUserIssueResponseTime original = responseTimeHashMap.get(jiraUser);
+
+                                // update
+                                original.setTotalRelatedIssueCount(original.getTotalRelatedIssueCount() + 1);
+                                original.setTotalTime(original.getTotalTime() + responseTime);
+                                responseTimeHashMap.replace(jiraUser, original);
+                            }
+                            // or not found
+                            else {
+                                // create new instance
+                                responseTimeHashMap.put(jiraUser, new JiraUserIssueResponseTime(1, responseTime));
+                            }
+                        }
+                    });
+        }
+
+        return responseTimeHashMap.keySet().stream()
+                .map(key -> JiraResponseTimeDto.builder()
+                        .userName(key.getDisplayName())
+                        .responseTime(responseTimeHashMap.get(key).getAverage())
+                        .build())
+                .toList();
+    }
+
+
+    private List<JiraUser> getJiraUserListByMention(List<Mention> mentionList) {
+        return mentionList.stream()
+                .map(mention -> jiraUserRepository.findByJiraAccountId(mention.id()).orElse(null))
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+    }
+
+    private Long getJiraUserFirstResponseTimeInComment(LocalDateTime refTime, List<JiraComment> commentList, JiraUser jiraUser) {
+        JiraComment firstComment = commentList.stream()
+                .filter(comment -> comment.getAuthorUser().equals(jiraUser))
+                .min(Comparator.comparing(JiraComment::getCreated))
+                .orElse(null);
+
+        if (firstComment == null) return null;
+
+        return Duration.between(refTime, firstComment.getCreated()).toMinutes();
     }
 
     private void saveJiraIssues(JiraProject jiraProject) {

@@ -34,10 +34,15 @@ public class JiraConfiguration {
     public ObjectMapper objectMapper() {
         SimpleModule simpleModule = new SimpleModule()
                 .addDeserializer(Doc.class, new ADFDeserializer());
-        return new AdfJackson2().mapper()
+        return adfJackson2().mapper()
                 .registerModule(new JavaTimeModule())
                 .registerModule(simpleModule)
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    }
+
+    @Bean
+    public AdfJackson2 adfJackson2() {
+        return new AdfJackson2();
     }
 
     @Bean
