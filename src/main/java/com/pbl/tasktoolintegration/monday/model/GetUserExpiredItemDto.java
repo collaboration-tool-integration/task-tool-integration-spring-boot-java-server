@@ -1,4 +1,4 @@
-package com.pbl.tasktoolintegration.monday.legacy.model;
+package com.pbl.tasktoolintegration.monday.model;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -9,7 +9,7 @@ import lombok.ToString;
 @Setter
 @Builder
 @ToString
-public class GetUsersAverageResponseTimeDto {
+public class GetUserExpiredItemDto {
     private String username;
-    private double averageResponseTime;
+    private Integer totalExpiredItems;
 }
