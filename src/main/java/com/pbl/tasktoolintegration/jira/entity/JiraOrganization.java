@@ -12,6 +12,8 @@ public class JiraOrganization {
     // DB 고유 ID
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(insertable = false, nullable = false)
+
     private Long id;
     // Jira 조직 URL
     @Column(nullable = false)

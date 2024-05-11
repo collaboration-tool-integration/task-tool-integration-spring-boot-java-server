@@ -2,6 +2,8 @@ package com.pbl.tasktoolintegration.jira.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -13,6 +15,7 @@ public class JiraIssueHistory {
     // DB 고유 ID
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(insertable = false, nullable = false)
     private Long id;
 
     // 지라 조직 내 ID
@@ -31,6 +34,8 @@ public class JiraIssueHistory {
     private LocalDate duedate;
 
     // 이슈 상세 내용
+    @Column(nullable = false, columnDefinition = "JSON")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String description;
 
     // 이슈 중요도

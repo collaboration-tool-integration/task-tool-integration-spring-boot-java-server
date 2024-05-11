@@ -22,6 +22,7 @@ public class JiraComment {
     // DB 고유 ID
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(insertable = false, nullable = false)
     private Long id;
 
     // 지라 조직 내 ID

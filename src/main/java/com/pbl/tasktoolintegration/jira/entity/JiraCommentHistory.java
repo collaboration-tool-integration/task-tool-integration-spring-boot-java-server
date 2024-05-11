@@ -2,6 +2,8 @@ package com.pbl.tasktoolintegration.jira.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
@@ -12,14 +14,15 @@ public class JiraCommentHistory {
     // DB 고유 ID
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(insertable = false, nullable = false)
     private Long id;
 
     // 지라 조직 내 ID
     private Long jiraId;
 
     // 댓글 내용
-    @Column(nullable = false)
-    @Lob
+    @Column(nullable = false, columnDefinition = "JSON")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String body;
 
     // 생성 일자

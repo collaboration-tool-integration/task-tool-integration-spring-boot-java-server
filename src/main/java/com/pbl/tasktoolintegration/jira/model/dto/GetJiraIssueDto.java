@@ -71,6 +71,10 @@ public class GetJiraIssueDto {
 		@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSZ")
 		private LocalDateTime updated;
 
+		@JsonProperty("resolutiondate")
+		@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+		private LocalDateTime resolutionDate;
+
 		@JsonProperty("duedate")
 		@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
 		private LocalDate duedate;
@@ -112,6 +116,7 @@ public class GetJiraIssueDto {
 				.issuePriority(fields.priority.name)
 				.created(fields.created)
 				.updated(fields.updated)
+				.resolutionDate(fields.resolutionDate)
 				.assigneeUser(this.fields.assignee != null ? jiraUserList.stream()
 						.filter(jiraUser -> jiraUser.getJiraAccountId().equals(this.fields.assignee.getAccountId()))
 						.findFirst()

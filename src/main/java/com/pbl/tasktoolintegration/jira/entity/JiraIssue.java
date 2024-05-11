@@ -26,6 +26,7 @@ public class JiraIssue {
     // DB 고유 ID
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(insertable = false, nullable = false)
     private Long id;
 
     // 지라 조직 내 ID
@@ -57,6 +58,9 @@ public class JiraIssue {
 
     // 업데이트 일자
     private LocalDateTime updated;
+
+    // 이슈 해결 일자
+    private LocalDateTime resolutionDate;
 
     @ManyToOne
     @JoinColumn(name = "assigneeUserId")

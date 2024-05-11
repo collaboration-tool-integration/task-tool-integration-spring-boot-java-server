@@ -19,8 +19,10 @@ import java.util.Objects;
 public class JiraUser {
     // DB 고유 ID
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(insertable = false, nullable = false)
     private Long id;
+
     // 지라 계정 ID
     @Column(nullable = false)
     private String jiraAccountId;

@@ -16,6 +16,7 @@ public class JiraProjectKey {
     // DB 고유 ID
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(insertable = false, nullable = false)
     private Long id;
 
     // 프로젝트 Key
