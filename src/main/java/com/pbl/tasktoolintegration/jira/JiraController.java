@@ -1,5 +1,6 @@
 package com.pbl.tasktoolintegration.jira;
 
+import com.pbl.tasktoolintegration.jira.model.dto.JiraDeadlineDto;
 import com.pbl.tasktoolintegration.jira.model.dto.JiraResponseTimeDto;
 import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
@@ -33,5 +34,13 @@ public class JiraController {
             @RequestParam(value = "projectId", required = false) Long projectId
     ) {
         return ResponseEntity.ok(jiraService.getJiraUserResponseTime(projectId));
+    }
+
+    @GetMapping("/deadline-exceeded")
+    public ResponseEntity<List<JiraDeadlineDto>> getDeadlineExceedCountByProject(
+            @RequestParam(value = "projectId", required = false) Long projectId,
+            @RequestParam(value = "includeParentIssue") boolean includeParentIssue
+    ) {
+        return ResponseEntity.ok(jiraService.getUserDeadlineExceedInfo(projectId, includeParentIssue));
     }
 }

@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -169,6 +170,56 @@ public class JiraService {
         if (firstComment == null) return null;
 
         return Duration.between(refTime, firstComment.getCreated()).toMinutes();
+    }
+
+    @Transactional(readOnly = true)
+    public List<JiraDeadlineDto> getUserDeadlineExceedInfo(Long projectId, boolean includeParentIssue) {
+        HashMap<JiraUser, Integer> exceedHashMap = new HashMap<>();
+        List<JiraIssue> jiraIssueList = List.of();
+
+        if (projectId != null) {
+            JiraProject jiraProject = jiraProjectRepository.findById(projectId).orElseThrow(() -> new RuntimeException("Not Found"));
+
+            if (includeParentIssue) jiraIssueRepository.findAllByJiraProjectAndAssigneeUserNotNullAndDuedateNotNull(jiraProject);
+            else jiraIssueList = jiraIssueRepository.findAllByJiraProjectAndAssigneeUserNotNullAndParentIssueNotNullAndDuedateNotNull(jiraProject);
+        }
+        else {
+            if (includeParentIssue) jiraIssueList = jiraIssueRepository.findAllByAssigneeUserNotNullAndDuedateNotNull();
+            else jiraIssueList = jiraIssueRepository.findAllByAssigneeUserNotNullAndParentIssueNotNullAndDuedateNotNull();
+        }
+
+        // Issue Loop
+        for (JiraIssue jiraIssue : jiraIssueList) {
+            JiraUser assigneeUser = jiraIssue.getAssigneeUser();
+
+            int currentCount = 0;
+            if (!exceedHashMap.containsKey(assigneeUser)) {
+                exceedHashMap.put(assigneeUser, 0);
+            }
+            else {
+                currentCount = exceedHashMap.get(assigneeUser);
+            }
+
+            // ResolutionDate is Null (not finished)
+            LocalDate targetDate;
+            if (jiraIssue.getResolutionDate() == null)
+                targetDate = LocalDate.now();
+            else
+                targetDate = jiraIssue.getResolutionDate().toLocalDate();
+
+            // Duedate is before Target Date
+            if (jiraIssue.getDuedate().isBefore(targetDate)) {
+                // Add Count
+                exceedHashMap.replace(assigneeUser, currentCount + 1);
+            }
+        }
+
+        return exceedHashMap.keySet().stream()
+                .map(key -> JiraDeadlineDto.builder()
+                        .userName(key.getDisplayName())
+                        .deadlineExceededIssueCount(exceedHashMap.get(key))
+                        .build())
+                .toList();
     }
 
     private void saveJiraIssues(JiraProject jiraProject) {

@@ -13,4 +13,10 @@ public interface JiraIssueRepository extends JpaRepository<JiraIssue, Long> {
 
     List<JiraIssue> findAllByJiraProjectAndDescriptionNotNullAndJiraCommentListNotEmpty(JiraProject jiraProject);
     List<JiraIssue> findAllByDescriptionNotNullAndJiraCommentListNotEmpty();
+
+    List<JiraIssue> findAllByJiraProjectAndAssigneeUserNotNullAndParentIssueNotNullAndDuedateNotNull(JiraProject jiraProject);
+    List<JiraIssue> findAllByAssigneeUserNotNullAndParentIssueNotNullAndDuedateNotNull();
+
+    List<JiraIssue> findAllByJiraProjectAndAssigneeUserNotNullAndDuedateNotNull(JiraProject jiraProject);
+    List<JiraIssue> findAllByAssigneeUserNotNullAndDuedateNotNull();
 }
