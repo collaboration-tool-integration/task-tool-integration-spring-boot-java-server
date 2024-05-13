@@ -12,6 +12,7 @@ import com.pbl.tasktoolintegration.monday.entity.MondayConfigurationsUsers;
 import com.pbl.tasktoolintegration.monday.entity.MondayItems;
 import com.pbl.tasktoolintegration.monday.entity.MondayUpdates;
 import com.pbl.tasktoolintegration.monday.entity.MondayUsers;
+import com.pbl.tasktoolintegration.monday.model.ActionWebhookDto;
 import com.pbl.tasktoolintegration.monday.model.GetUserExpiredItemDto;
 import com.pbl.tasktoolintegration.monday.model.GetUsersAverageResponseTimeDto;
 import com.pbl.tasktoolintegration.monday.model.GetUsersAverageResponseTimeDto.ResponseTimeOfUser;
@@ -417,6 +418,21 @@ public class MondayService {
                 }
                 page++;
             }
+        }
+    }
+
+    public void actionWebhook(ActionWebhookDto actionWebhookDto) {
+        switch (actionWebhookDto.getType()) {
+            case "change_name":
+                break;
+            case "change_column_value":
+                break;
+            case "create_item":
+                break;
+            case "create_update":
+                break;
+            case "edit_update":
+                break;
         }
     }
 }

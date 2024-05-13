@@ -1,5 +1,6 @@
 package com.pbl.tasktoolintegration.monday;
 
+import com.pbl.tasktoolintegration.monday.model.ActionWebhookDto;
 import com.pbl.tasktoolintegration.monday.model.CatchWebhookReq;
 import com.pbl.tasktoolintegration.monday.model.GetUserExpiredItemDto;
 import com.pbl.tasktoolintegration.monday.model.GetUserExpiredItemRes;
@@ -54,7 +55,8 @@ public class MondayController {
     @PostMapping("/monday/webhook")
     public ResponseEntity<MondayWebhookRes> catchWebhook(@RequestBody CatchWebhookReq catchWebhookReq) {
         if (catchWebhookReq.getEvent() != null) {
-
+            ActionWebhookDto actionWebhookDto = ActionWebhookDto.from(catchWebhookReq.getEvent());
+            mondayService.actionWebhook(actionWebhookDto);
         }
 
         // webhook validation
