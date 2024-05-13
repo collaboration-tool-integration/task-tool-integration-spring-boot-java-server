@@ -1,15 +1,19 @@
 package com.pbl.tasktoolintegration.monday;
 
+import com.pbl.tasktoolintegration.monday.model.CatchWebhookReq;
 import com.pbl.tasktoolintegration.monday.model.GetUserExpiredItemDto;
 import com.pbl.tasktoolintegration.monday.model.GetUserExpiredItemRes;
 import com.pbl.tasktoolintegration.monday.model.GetUserResponseTimeRes;
 import com.pbl.tasktoolintegration.monday.model.GetUsersAverageResponseTimeDto;
+import com.pbl.tasktoolintegration.monday.model.MondayWebhookRes;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -45,5 +49,19 @@ public class MondayController {
             .toList();
 
         return new ResponseEntity(response, HttpStatus.OK);
+    }
+
+    @PostMapping("/monday/webhook")
+    public ResponseEntity<MondayWebhookRes> catchWebhook(@RequestBody CatchWebhookReq catchWebhookReq) {
+        if (catchWebhookReq.getEvent() != null) {
+
+        }
+
+        // webhook validation
+        String challenge = catchWebhookReq.getChallenge();
+        MondayWebhookRes response = MondayWebhookRes.builder()
+            .challenge(challenge)
+            .build();
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 }
