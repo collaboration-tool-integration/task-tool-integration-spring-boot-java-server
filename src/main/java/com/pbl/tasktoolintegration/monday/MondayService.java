@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pbl.tasktoolintegration.monday.entity.MondayAssignees;
 import com.pbl.tasktoolintegration.monday.entity.MondayBoards;
+import com.pbl.tasktoolintegration.monday.entity.MondayBoardsSubscribers;
 import com.pbl.tasktoolintegration.monday.entity.MondayComments;
 import com.pbl.tasktoolintegration.monday.entity.MondayConfigurations;
 import com.pbl.tasktoolintegration.monday.entity.MondayConfigurationsBoards;
@@ -11,8 +12,10 @@ import com.pbl.tasktoolintegration.monday.entity.MondayConfigurationsUsers;
 import com.pbl.tasktoolintegration.monday.entity.MondayItems;
 import com.pbl.tasktoolintegration.monday.entity.MondayUpdates;
 import com.pbl.tasktoolintegration.monday.entity.MondayUsers;
+import com.pbl.tasktoolintegration.monday.model.ActionWebhookDto;
 import com.pbl.tasktoolintegration.monday.model.GetUserExpiredItemDto;
 import com.pbl.tasktoolintegration.monday.model.GetUsersAverageResponseTimeDto;
+import com.pbl.tasktoolintegration.monday.model.GetUsersAverageResponseTimeDto.ResponseTimeOfUser;
 import com.pbl.tasktoolintegration.monday.model.MondayAssigneeInfo;
 import com.pbl.tasktoolintegration.monday.model.MondayStatusColumnInfo;
 import com.pbl.tasktoolintegration.monday.model.MondayStatusInfo;
@@ -25,6 +28,7 @@ import com.pbl.tasktoolintegration.monday.model.MondayGetAllUpdatesWithCommentRe
 import com.pbl.tasktoolintegration.monday.model.MondayGetAllUsersRes;
 import com.pbl.tasktoolintegration.monday.repository.MondayAssigneesRepository;
 import com.pbl.tasktoolintegration.monday.repository.MondayBoardsRepository;
+import com.pbl.tasktoolintegration.monday.repository.MondayBoardsSubscribersRepository;
 import com.pbl.tasktoolintegration.monday.repository.MondayCommentsRepository;
 import com.pbl.tasktoolintegration.monday.repository.MondayConfigurationsBoardsRepository;
 import com.pbl.tasktoolintegration.monday.repository.MondayConfigurationsRepository;
@@ -62,6 +66,7 @@ public class MondayService {
     private final MondayAssigneesRepository mondayAssigneesRepository;
     private final MondayCommentsRepository mondayCommentsRepository;
     private final MondayUpdatesRepository mondayUpdatesRepository;
+    private final MondayBoardsSubscribersRepository mondayBoardsSubscribersRepository;
 
     private List<String> getMentionedUsersInString(String text) {
         List<String> mentionedUsers = new ArrayList<>();
@@ -82,79 +87,116 @@ public class MondayService {
 
     public List<GetUsersAverageResponseTimeDto> getUsersAverageResponseTime(Long id) {
         MondayConfigurations config = mondayConfigurationsRepository.findById(id).get();
-        List<MondayUsers> mondayUsers = mondayConfigurationsUsersRepository.findByMondayConfiguration(config).stream()
-            .map(MondayConfigurationsUsers::getMondayUser)
-            .collect(Collectors.toList());
+        List<GetUsersAverageResponseTimeDto> usersAverageResponseTime = new ArrayList<>();
+
         List<String> mondayBoardIds = mondayConfigurationsBoardsRepository.findByMondayConfiguration(config).stream()
             .map(MondayConfigurationsBoards::getMondayBoard)
             .map(MondayBoards::getId)
             .collect(Collectors.toList());
 
-        Map<String, List<Integer>> userResponseTimeMap = new HashMap<>();
-        for (MondayUsers user : mondayUsers) {
-            userResponseTimeMap.put(user.getName(), new ArrayList<>());
-        }
+        for (String boardId : mondayBoardIds) {
+            List<MondayUsers> mondayUsers = mondayBoardsSubscribersRepository.findByMondayBoardId(boardId).stream()
+                .map(MondayBoardsSubscribers::getMondayUser)
+                .collect(Collectors.toList());
 
-        List<MondayUpdates> mondayUpdates = mondayUpdatesRepository.findByMondayBoardId(mondayBoardIds);
+            MondayBoards mondayBoard = mondayBoardsRepository.findById(boardId).get();
 
-        for (MondayUpdates update : mondayUpdates) {
-            List<String> mentionedUsers = getMentionedUsersInString(update.getContent());
-            if (!mentionedUsers.isEmpty()) {
-                Date startDate = update.getCreatedAt();
-                List<String> leftUsers = new ArrayList<>(mentionedUsers);
-                List<MondayComments> mondayComments = mondayCommentsRepository.findByMondayUpdate(update);
-                for (MondayComments comment : mondayComments) {
-                    if (mentionedUsers.contains(comment.getMondayCreatorUser().getName()) && leftUsers.contains(comment.getMondayCreatorUser().getName())){
-                        int diffSeconds = calculateResponseTime(startDate, comment.getCreatedAt());
-                        userResponseTimeMap.get(comment.getMondayCreatorUser().getName()).add(diffSeconds);
-                        leftUsers.remove(comment.getMondayCreatorUser().getName());
+            Map<String, List<Integer>> userResponseTimeMap = new HashMap<>();
+            for (MondayUsers user : mondayUsers) {
+                userResponseTimeMap.put(user.getName(), new ArrayList<>());
+            }
+
+            List<MondayUpdates> mondayUpdates = mondayUpdatesRepository.findByMondayBoardId(boardId);
+
+            for (MondayUpdates update : mondayUpdates) {
+                List<String> mentionedUsers = getMentionedUsersInString(update.getContent());
+                if (!mentionedUsers.isEmpty()) {
+                    Date startDate = update.getCreatedAt();
+                    List<String> leftUsers = new ArrayList<>(mentionedUsers);
+                    List<MondayComments> mondayComments = mondayCommentsRepository.findByMondayUpdate(update);
+                    for (MondayComments comment : mondayComments) {
+                        if (mentionedUsers.contains(comment.getMondayCreatorUser().getName()) && leftUsers.contains(comment.getMondayCreatorUser().getName())){
+                            int diffSeconds = calculateResponseTime(startDate, comment.getCreatedAt());
+
+                            // 현재 삭제된 유저의 경우에는 현재 구독자로 남아있지 않으며 언급은 되어있을 수 있기 때문에 체크
+                            if (userResponseTimeMap.containsKey(comment.getMondayCreatorUser().getName())) {
+                                userResponseTimeMap.get(comment.getMondayCreatorUser().getName()).add(diffSeconds);
+                                leftUsers.remove(comment.getMondayCreatorUser().getName());
+                            }
+                        }
                     }
                 }
             }
-        }
 
-        List<GetUsersAverageResponseTimeDto> usersAverageResponseTime = new ArrayList<>();
-        for (String userId : userResponseTimeMap.keySet()) {
-            List<Integer> responseTimes = userResponseTimeMap.get(userId);
-            // 응답한 기록이 없는 경우 분석 불가
-            if (responseTimes.isEmpty()) {
-                continue;
+            List<ResponseTimeOfUser> responseTimeOfUsers = new ArrayList<>();
+
+            for (String userId : userResponseTimeMap.keySet()) {
+                List<Integer> responseTimes = userResponseTimeMap.get(userId);
+                // 응답한 기록이 없는 경우 분석 불가
+                if (responseTimes.isEmpty()) {
+                    continue;
+                }
+
+                int sum = 0;
+                for (int responseTime : responseTimes) {
+                    sum += responseTime;
+                }
+                int average = sum / responseTimes.size();
+                responseTimeOfUsers.add(ResponseTimeOfUser.builder()
+                    .username(userId)
+                    .averageResponseTime(average)
+                    .build());
             }
 
-            int sum = 0;
-            for (int responseTime : responseTimes) {
-                sum += responseTime;
-            }
-            int average = sum / responseTimes.size();
             usersAverageResponseTime.add(GetUsersAverageResponseTimeDto.builder()
-                .username(userId)
-                .averageResponseTime(average)
+                .boardName(mondayBoard.getName())
+                .responseTimeOfUsers(responseTimeOfUsers)
                 .build());
         }
+
         return usersAverageResponseTime;
     }
 
     public List<GetUserExpiredItemDto> getUsersExpiredItem(Long configId) {
-        List<MondayUsers> mondayUsers = mondayConfigurationsUsersRepository.findByMondayConfiguration(mondayConfigurationsRepository.findById(configId).get()).stream()
-            .map(MondayConfigurationsUsers::getMondayUser)
+        List<MondayBoards> boards = mondayConfigurationsBoardsRepository.findByMondayConfiguration(mondayConfigurationsRepository.findById(configId).get()).stream()
+            .map(MondayConfigurationsBoards::getMondayBoard)
             .collect(Collectors.toList());
-        Map<String, Integer > userExpiredItemCount = new HashMap<>();
 
-        for (MondayUsers user : mondayUsers) {
-            List<MondayItems> mondayItems = mondayAssigneesRepository.findByMondayUserAndMondayItem_StatusAndMondayItem_DeadlineToLessThan(user, "미완료", new Date()).stream()
-                .map(MondayAssignees::getMondayItem)
+        List<GetUserExpiredItemDto> userExpiredItems = new ArrayList<>();
+
+        // 하위 아이템만 필터링 -> monday는 하위 아이템 묶음을 보드로 관리하기 때문에 이름으로 필터링
+        for (MondayBoards board : boards) {
+            if (!board.getName().contains("하위 아이템")) {
+                continue;
+            }
+            List<MondayUsers> mondayUsers = mondayBoardsSubscribersRepository.findByMondayBoardId(
+                    board.getId()).stream()
+                .map(MondayBoardsSubscribers::getMondayUser)
                 .collect(Collectors.toList());
 
-            userExpiredItemCount.put(user.getName(), mondayItems.size());
+            Map<String, Integer > userExpiredItemCount = new HashMap<>();
+
+            for (MondayUsers user : mondayUsers) {
+                List<MondayItems> mondayItems = mondayAssigneesRepository.findByMondayUserAndMondayItem_StatusAndMondayItem_DeadlineToLessThanAndMondayItem_MondayBoard(user, "미완료", new Date(), board).stream()
+                    .map(MondayAssignees::getMondayItem)
+                    .collect(Collectors.toList());
+
+                userExpiredItemCount.put(user.getName(), mondayItems.size());
+            }
+
+            userExpiredItems.add(GetUserExpiredItemDto.builder()
+                .boardName(board.getName())
+                .expiredItemsOfUsers(userExpiredItemCount.entrySet().stream()
+                    .map(entry -> GetUserExpiredItemDto.ExpiredItemsOfUser.builder()
+                        .username(entry.getKey())
+                        .totalExpiredItems(entry.getValue())
+                        .build())
+                    .collect(Collectors.toList()))
+                .build());
         }
 
 
-        return userExpiredItemCount.entrySet().stream()
-            .map(entry -> GetUserExpiredItemDto.builder()
-                .username(entry.getKey())
-                .totalExpiredItems(entry.getValue())
-                .build())
-            .collect(Collectors.toList());
+        return userExpiredItems;
     }
 
     public List<GetAllMondayUsersDto> getAllMondayUsers(String apiKey) {
@@ -316,6 +358,14 @@ public class MondayService {
                     .mondayBoard(savedBoard)
                     .build());
 
+                List<MondayUsers> users = mondayUsersRepository.findByIdIn(board.getSubscriberIds());
+                for (MondayUsers user : users) {
+                    mondayBoardsSubscribersRepository.save(MondayBoardsSubscribers.builder()
+                        .mondayBoard(savedBoard)
+                        .mondayUser(user)
+                        .build());
+                }
+
                 syncItemsByBoardId(savedBoard.getId(), mondayConfiguration.getApiKey());
             }
         }
@@ -368,6 +418,21 @@ public class MondayService {
                 }
                 page++;
             }
+        }
+    }
+
+    public void actionWebhook(ActionWebhookDto actionWebhookDto) {
+        switch (actionWebhookDto.getType()) {
+            case "change_name":
+                break;
+            case "change_column_value":
+                break;
+            case "create_item":
+                break;
+            case "create_update":
+                break;
+            case "edit_update":
+                break;
         }
     }
 }

@@ -1,6 +1,8 @@
 package com.pbl.tasktoolintegration.monday.model;
 
+import java.util.List;
 import lombok.Builder;
+import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
@@ -10,6 +12,13 @@ import lombok.ToString;
 @Builder
 @ToString
 public class GetUserExpiredItemDto {
-    private String username;
-    private Integer totalExpiredItems;
+    private String boardName;
+    private List<ExpiredItemsOfUser> expiredItemsOfUsers;
+
+    @Data
+    @Builder
+    public static class ExpiredItemsOfUser {
+        private String username;
+        private Integer totalExpiredItems;
+    }
 }

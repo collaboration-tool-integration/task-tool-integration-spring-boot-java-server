@@ -19,5 +19,11 @@ public class MondayGetAllBoardsRes {
         private String id;
         private String name;
         private Date updated_at;
+        private List<Subscriber> subscribers;
+    }
+
+    @lombok.Data
+    public static class Subscriber {
+        private String id;
     }
 }
