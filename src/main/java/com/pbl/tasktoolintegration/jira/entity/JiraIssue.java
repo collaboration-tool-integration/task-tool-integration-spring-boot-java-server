@@ -3,6 +3,7 @@ package com.pbl.tasktoolintegration.jira.entity;
 import com.atlassian.adf.jackson2.AdfJackson2;
 import com.atlassian.adf.model.node.Doc;
 import com.atlassian.adf.model.node.Mention;
+import com.pbl.tasktoolintegration.jira.model.dto.GetJiraIssueDto;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,6 +16,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Data
 @Entity
@@ -129,5 +131,55 @@ public class JiraIssue {
 
 
         return jiraUserList;
+    }
+
+    public JiraIssueHistory toHistory() {
+        return JiraIssueHistory.builder()
+                .jiraId(jiraId)
+                .key(key)
+                .summary(summary)
+                .duedate(duedate)
+                .description(description)
+                .issuePriority(issuePriority)
+                .created(created)
+                .updated(updated)
+                .resolutionDate(resolutionDate)
+                .assigneeUser(assigneeUser)
+                .creatorUser(creatorUser)
+                .reportUser(reportUser)
+                .jiraIssueType(jiraIssueType)
+                .jiraProject(jiraProject)
+                .jiraStatus(jiraStatus)
+                .parentIssue(parentIssue)
+                .jiraIssue(this)
+                .build();
+    }
+
+    public void updateByDto(GetJiraIssueDto jiraIssueDto,
+                            JiraIssue parentIssue,
+                            JiraIssueType jiraIssueType,
+                            JiraStatus jiraStatus,
+                            JiraUser assigneeUser,
+                            JiraUser creatorUser,
+                            JiraUser reportUser
+    ) {
+        // Jira ID가 다른 경우 업데이트 안함
+        if (jiraIssueDto.getId().equals(this.jiraId.toString())) return;
+
+        AdfJackson2 adfJackson2 = new AdfJackson2();
+
+        this.summary = jiraIssueDto.getFields().getSummary();
+        this.parentIssue = parentIssue;
+        this.duedate = jiraIssueDto.getFields().getDuedate();
+        this.description = jiraIssueDto.getFields().getDescription() != null ? adfJackson2.marshall(jiraIssueDto.getFields().getDescription()) : null;
+        this.issuePriority = jiraIssueDto.getFields().getPriority().getName();
+        this.created = jiraIssueDto.getFields().getCreated();
+        this.updated = jiraIssueDto.getFields().getUpdated();
+        this.resolutionDate = jiraIssueDto.getFields().getResolutionDate();
+        this.assigneeUser = assigneeUser;
+        this.creatorUser = creatorUser;
+        this.reportUser = reportUser;
+        this.jiraIssueType = jiraIssueType;
+        this.jiraStatus = jiraStatus;
     }
 }

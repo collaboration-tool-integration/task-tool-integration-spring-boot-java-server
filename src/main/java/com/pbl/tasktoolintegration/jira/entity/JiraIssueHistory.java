@@ -1,7 +1,10 @@
 package com.pbl.tasktoolintegration.jira.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.RequiredArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -11,6 +14,9 @@ import java.time.LocalDateTime;
 @Data
 @Entity
 @Table(name = "JiraIssueHistory", indexes = @Index(columnList = "updated, jiraIssueId", unique = true))
+@Builder
+@RequiredArgsConstructor
+@AllArgsConstructor
 public class JiraIssueHistory {
     // DB 고유 ID
     @Id
@@ -39,7 +45,7 @@ public class JiraIssueHistory {
     private String description;
 
     // 이슈 중요도
-    private Integer issuePriority;
+    private String issuePriority;
 
     // 생성일자
     @Column(nullable = false)
@@ -47,6 +53,10 @@ public class JiraIssueHistory {
 
     // 업데이트 일자
     private LocalDateTime updated;
+
+    // 이슈 해결 일자
+    private LocalDateTime resolutionDate;
+
 
     // Jira Issue
     @ManyToOne
@@ -58,6 +68,11 @@ public class JiraIssueHistory {
     @JoinColumn(name = "jiraIssueId")
     private JiraIssue jiraIssue;
 
+    // Jira Project
+    @ManyToOne
+    @JoinColumn(name = "jiraProjectId")
+    private JiraProject jiraProject;
+
     // Jira User
     @ManyToOne
     @JoinColumn(name = "creatorUserId")
@@ -67,6 +82,11 @@ public class JiraIssueHistory {
     @ManyToOne
     @JoinColumn(name = "assigneeUserId")
     private JiraUser assigneeUser;
+
+    @ManyToOne
+    @JoinColumn(name = "reportUserId")
+    private JiraUser reportUser;
+
 
     // Jira Issue Type
     @ManyToOne

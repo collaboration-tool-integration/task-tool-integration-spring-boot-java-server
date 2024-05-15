@@ -25,7 +25,9 @@ spring:
     database: postgresql
     properties:
       hibernate:
-        default_schema: tasktool
+        default_schema: ${TASKTOOL_SCHEMA_NAME:tasktool}
+
+
 
 server:
   port: 9090 # docker desktop과 충돌을 피하기 위해 포트 변경
@@ -37,6 +39,11 @@ jira:
 
 logging:
   level:
+    org:
+      springframework:
+        web:
+          filter:
+            CommonsRequestLoggingFilter: DEBUG
     reactor.netty.http.client: DEBUG
 ---
 

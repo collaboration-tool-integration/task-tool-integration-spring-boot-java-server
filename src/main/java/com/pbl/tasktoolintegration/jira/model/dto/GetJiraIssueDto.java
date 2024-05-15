@@ -83,7 +83,7 @@ public class GetJiraIssueDto {
 		private GetJiraStatusDto.JiraStatusDto status;
 
 		@Getter
-		private static class Priority {
+		public static class Priority {
 			@JsonProperty("name")
 			private String name;
 
@@ -103,6 +103,9 @@ public class GetJiraIssueDto {
 			JiraIssue parentIssue,
 			JiraIssueType jiraIssueType,
 			JiraStatus jiraStatus,
+			JiraUser assigneeUser,
+			JiraUser creatorUser,
+			JiraUser reportUser,
 			List<JiraUser> jiraUserList) {
 		AdfJackson2 adfJackson2 = new AdfJackson2();
 
@@ -117,18 +120,9 @@ public class GetJiraIssueDto {
 				.created(fields.created)
 				.updated(fields.updated)
 				.resolutionDate(fields.resolutionDate)
-				.assigneeUser(this.fields.assignee != null ? jiraUserList.stream()
-						.filter(jiraUser -> jiraUser.getJiraAccountId().equals(this.fields.assignee.getAccountId()))
-						.findFirst()
-						.orElse(null) : null)
-				.creatorUser(this.fields.creator != null ? jiraUserList.stream()
-						.filter(jiraUser -> jiraUser.getJiraAccountId().equals(this.fields.creator.getAccountId()))
-						.findFirst()
-						.orElse(null) : null)
-				.reportUser(this.fields.reporter != null ? jiraUserList.stream()
-						.filter(jiraUser -> jiraUser.getJiraAccountId().equals(this.fields.reporter.getAccountId()))
-						.findFirst()
-						.orElse(null) : null)
+				.assigneeUser(assigneeUser)
+				.creatorUser(creatorUser)
+				.reportUser(reportUser)
 				.jiraIssueType(jiraIssueType)
 				.jiraProject(jiraProject)
 				.jiraStatus(jiraStatus)

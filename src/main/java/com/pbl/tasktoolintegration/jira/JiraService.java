@@ -4,10 +4,12 @@ import com.atlassian.adf.jackson2.AdfJackson2;
 import com.atlassian.adf.model.node.Mention;
 import com.pbl.tasktoolintegration.jira.entity.*;
 import com.pbl.tasktoolintegration.jira.model.dto.*;
+import com.pbl.tasktoolintegration.jira.model.request.PostJiraWebhookRequest;
 import com.pbl.tasktoolintegration.jira.repository.*;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -27,7 +29,10 @@ public class JiraService {
     private final JiraUserRepository jiraUserRepository;
     private final JiraStatusRepository jiraStatusRepository;
     private final JiraIssueRepository jiraIssueRepository;
+    private final JiraCommentRepository jiraCommentRepository;
     private final JiraIssueTypeRepository jiraIssueTypeRepository;
+    private final JiraIssueHistoryRepository jiraIssueHistoryRepository;
+    private final JiraCommentHistoryRepository jiraCommentHistoryRepository;
 
     @Transactional
     public void syncJiraUser() {
@@ -225,20 +230,15 @@ public class JiraService {
     private void saveJiraIssues(JiraProject jiraProject) {
         int startAt = 0;
 
+        List<JiraUser> jiraUserList = jiraUserRepository.findAll();
         while (true) {
             JiraSearchApiPaging fetchIssueResult = getJiraParentIssueList(startAt, 50);
             if (fetchIssueResult.getIssues() == null || fetchIssueResult.getIssues().isEmpty())
                 break;
 
             List<JiraIssue> issueList = fetchIssueResult.getIssues().stream()
-                            .filter(getJiraIssueDto -> jiraIssueRepository.findByJiraIdAndJiraProject(Long.getLong(getJiraIssueDto.getId()), jiraProject).isEmpty())
-                            .map(getJiraIssueDto -> getJiraIssueDto.to(
-                                    jiraProject,
-                                    null,
-                                    getJiraIssueDto.getFields().getIssuetype() != null ? jiraIssueTypeRepository.findByJiraIdAndJiraProject(Long.valueOf(getJiraIssueDto.getFields().getIssuetype().getId()), jiraProject).orElse(null) : null,
-                                    getJiraIssueDto.getFields().getStatus() != null ? jiraStatusRepository.findByJiraIdAndJiraProject(Long.valueOf(getJiraIssueDto.getFields().getStatus().getId()), jiraProject).orElse(null) : null,
-                                    jiraUserRepository.findAll())
-                            )
+                    .filter(getJiraIssueDto -> jiraIssueRepository.findByJiraIdAndJiraProject(Long.getLong(getJiraIssueDto.getId()), jiraProject).isEmpty())
+                    .map(getJiraIssueDto -> createJiraIssueByDto(getJiraIssueDto, jiraProject, jiraUserList))
                     .toList();
 
             jiraIssueRepository.saveAll(issueList);
@@ -253,6 +253,7 @@ public class JiraService {
     private void saveJiraSubtask(JiraProject jiraProject) {
         int startAt = 0;
 
+        List<JiraUser> jiraUserList = jiraUserRepository.findAll();
         while (true) {
             JiraSearchApiPaging fetchIssueResult = getJiraSubtaskList(startAt, 50);
             if (fetchIssueResult.getIssues() == null || fetchIssueResult.getIssues().isEmpty())
@@ -260,13 +261,7 @@ public class JiraService {
 
             List<JiraIssue> issueList = fetchIssueResult.getIssues().stream()
                     .filter(getJiraIssueDto -> jiraIssueRepository.findByJiraIdAndJiraProject(Long.getLong(getJiraIssueDto.getId()), jiraProject).isEmpty())
-                    .map(getJiraIssueDto -> getJiraIssueDto.to(
-                            jiraProject,
-                            getJiraIssueDto.getFields().getParent() != null ? findIssue(jiraProject, Long.valueOf(getJiraIssueDto.getFields().getParent().getId())) : null,
-                            getJiraIssueDto.getFields().getIssuetype() != null ? jiraIssueTypeRepository.findByJiraIdAndJiraProject(Long.valueOf(getJiraIssueDto.getFields().getIssuetype().getId()), jiraProject).orElse(null) : null,
-                            getJiraIssueDto.getFields().getStatus() != null ? jiraStatusRepository.findByJiraIdAndJiraProject(Long.valueOf(getJiraIssueDto.getFields().getStatus().getId()), jiraProject).orElse(null) : null,
-                            jiraUserRepository.findAll())
-                    )
+                    .map(getJiraIssueDto -> createJiraIssueByDto(getJiraIssueDto, jiraProject, jiraUserList))
                     .toList();
 
             jiraIssueRepository.saveAll(issueList);
@@ -276,6 +271,42 @@ public class JiraService {
             startAt += fetchIssueResult.getMaxResults();
         }
 
+    }
+
+    private JiraIssue createJiraIssueByDto(GetJiraIssueDto getJiraIssueDto, JiraProject jiraProject, List<JiraUser> jiraUserList) {
+        JiraUser assigneeUser = null;
+        if (getJiraIssueDto.getFields().getAssignee() != null) {
+            assigneeUser = jiraUserList.stream()
+                    .filter(user -> getJiraIssueDto.getFields().getAssignee().getAccountId().equals(user.getJiraAccountId()))
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        JiraUser creatorUser = null;
+        if (getJiraIssueDto.getFields().getCreator() != null) {
+            creatorUser = jiraUserList.stream()
+                    .filter(user -> getJiraIssueDto.getFields().getCreator().getAccountId().equals(user.getJiraAccountId()))
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        JiraUser reportUser = null;
+        if (getJiraIssueDto.getFields().getCreator() != null) {
+            reportUser = jiraUserList.stream()
+                    .filter(user -> getJiraIssueDto.getFields().getReporter().getAccountId().equals(user.getJiraAccountId()))
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        return getJiraIssueDto.to(
+                jiraProject,
+                getJiraIssueDto.getFields().getParent() != null ? findIssue(jiraProject, Long.valueOf(getJiraIssueDto.getFields().getParent().getId())) : null,
+                getJiraIssueDto.getFields().getIssuetype() != null ? jiraIssueTypeRepository.findByJiraIdAndJiraProject(Long.valueOf(getJiraIssueDto.getFields().getIssuetype().getId()), jiraProject).orElse(null) : null,
+                getJiraIssueDto.getFields().getStatus() != null ? jiraStatusRepository.findByJiraIdAndJiraProject(Long.valueOf(getJiraIssueDto.getFields().getStatus().getId()), jiraProject).orElse(null) : null,
+                assigneeUser,
+                creatorUser,
+                reportUser,
+                jiraUserList);
     }
 
     private JiraIssue findIssue(JiraProject jiraProject, Long targetId) {
@@ -383,4 +414,141 @@ public class JiraService {
                 .block();
     }
 
+    private GetJiraIssueDto getJiraIssue(String issueId) {
+        return jiraWebClient
+                .get()
+                .uri(uriBuilder -> uriBuilder.pathSegment( "issue", issueId)
+                        .queryParam("fields", "*all")
+                        .queryParam("expand", "comment")
+                        .build())
+                .retrieve()
+                .bodyToMono(new ParameterizedTypeReference<GetJiraIssueDto>() {})
+                .block();
+    }
+
+    private GetJiraIssueCommentDto.CommentsItem getJiraComment(String issueIdOrKey, String commentId) {
+        return jiraWebClient
+                .get()
+                .uri(uriBuilder -> uriBuilder.pathSegment( "issue", issueIdOrKey, "comment", commentId)
+                        .build())
+                .retrieve()
+                .bodyToMono(new ParameterizedTypeReference<GetJiraIssueCommentDto.CommentsItem>() {})
+                .block();
+    }
+
+
+
+    @Transactional
+    @Async
+    public void receiveJiraWebhook(Long projectId, PostJiraWebhookRequest webhookRequest) {
+        JiraProject jiraProject = jiraProjectRepository.findByJiraId(projectId).orElseThrow(() -> new RuntimeException("Not Found"));
+        List<JiraUser> jiraUserList = jiraUserRepository.findAll();
+
+        if (webhookRequest.getUser() != null) {
+            JiraUser user = jiraUserRepository.findByJiraAccountId(webhookRequest.getUser().getAccountId())
+                    .orElse(null);
+
+            if (user == null) {
+                jiraUserRepository.save(webhookRequest.getUser().to());
+            }
+            else {
+                user.updateByDto(webhookRequest.getUser());
+            }
+        }
+
+        if (webhookRequest.getIssue() != null) {
+            GetJiraIssueDto newIssueDto = this.getJiraIssue(webhookRequest.getIssue().getId());
+            if (newIssueDto.getId() == null || newIssueDto.getFields() == null) return;
+
+            JiraIssue issue = jiraIssueRepository.findByJiraId(Long.parseLong(newIssueDto.getId()))
+                    .orElse(null);
+
+            JiraIssue parentIssue = null;
+            if (newIssueDto.getFields().getParent() != null) {
+                parentIssue = jiraIssueRepository.findByJiraIdAndJiraProject(Long.valueOf(newIssueDto.getFields().getParent().getId()), jiraProject).orElse(null);
+            }
+
+            JiraIssueType jiraIssueType = null;
+            if (newIssueDto.getFields().getIssuetype() != null) {
+                jiraIssueType = jiraIssueTypeRepository.findByJiraIdAndJiraProject(Long.valueOf(newIssueDto.getFields().getIssuetype().getId()), jiraProject)
+                        .orElse(null);
+            }
+
+            JiraStatus jiraStatus = null;
+            if (newIssueDto.getFields().getStatus() != null) {
+                jiraStatus = jiraStatusRepository.findByJiraIdAndJiraProject(Long.valueOf(newIssueDto.getFields().getStatus().getId()), jiraProject)
+                        .orElse(null);
+            }
+
+            JiraUser assigneeUser = null;
+            if (newIssueDto.getFields().getAssignee() != null) {
+                assigneeUser = jiraUserList.stream()
+                        .filter(user -> newIssueDto.getFields().getAssignee().getAccountId().equals(user.getJiraAccountId()))
+                        .findFirst()
+                        .orElse(null);
+            }
+
+            JiraUser creatorUser = null;
+            if (newIssueDto.getFields().getCreator() != null) {
+                creatorUser = jiraUserList.stream()
+                        .filter(user -> newIssueDto.getFields().getCreator().getAccountId().equals(user.getJiraAccountId()))
+                        .findFirst()
+                        .orElse(null);
+            }
+
+            JiraUser reportUser = null;
+            if (newIssueDto.getFields().getCreator() != null) {
+                reportUser = jiraUserList.stream()
+                        .filter(user -> newIssueDto.getFields().getReporter().getAccountId().equals(user.getJiraAccountId()))
+                        .findFirst()
+                        .orElse(null);
+            }
+
+            if (issue != null && !issue.getUpdated().equals(newIssueDto.getFields().getUpdated())) {
+                if(jiraIssueHistoryRepository.findByJiraIdAndUpdated(issue.getJiraId(), issue.getUpdated()).isEmpty()) {
+                    jiraIssueHistoryRepository.save(issue.toHistory());
+                    issue.updateByDto(newIssueDto, parentIssue, jiraIssueType, jiraStatus, assigneeUser, creatorUser, reportUser);
+                }
+            }
+            else {
+                issue = jiraIssueRepository.save(
+                        newIssueDto.to(jiraProject, parentIssue, jiraIssueType, jiraStatus, assigneeUser, creatorUser, reportUser, jiraUserList)
+                );
+            }
+
+            if (webhookRequest.getComment() != null) {
+                GetJiraIssueCommentDto.CommentsItem commentItem = getJiraComment(String.valueOf(issue.getJiraId()), webhookRequest.getComment().getId());
+                if (commentItem == null) return;
+
+                JiraComment jiraComment = jiraCommentRepository.findByJiraId(Long.valueOf(commentItem.getId()))
+                        .orElse(null);
+
+                JiraUser authorUser = null;
+                if (commentItem.getAuthor() != null) {
+                    authorUser = jiraUserList.stream()
+                            .filter(user -> commentItem.getAuthor().getAccountId().equals(user.getJiraAccountId()))
+                            .findFirst()
+                            .orElse(null);
+                }
+
+                JiraUser updator = null;
+                if (commentItem.getAuthor() != null) {
+                    updator = jiraUserList.stream()
+                            .filter(user -> commentItem.getUpdateAuthor().getAccountId().equals(user.getJiraAccountId()))
+                            .findFirst()
+                            .orElse(null);
+                }
+
+                if (jiraComment == null) {
+                    jiraCommentRepository.save(commentItem.to(issue, authorUser, updator));
+                }
+                else {
+                    if(jiraCommentHistoryRepository.findByJiraIdAndUpdated(jiraComment.getJiraId(), jiraComment.getUpdated()).isEmpty()) {
+                        jiraCommentHistoryRepository.save(jiraComment.toHistory());
+                        jiraComment.updateByDto(commentItem, authorUser, updator);
+                    }
+                }
+            }
+        }
+    }
 }

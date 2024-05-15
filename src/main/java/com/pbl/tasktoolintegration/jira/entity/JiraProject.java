@@ -64,9 +64,9 @@ public class JiraProject {
     @JoinColumn(name = "deletedUserId")
     private JiraUser deletedUser;
 
-    @ManyToOne
-    @JoinColumn(name = "orgId")
-    private JiraOrganization jiraOrganization;
+//    @ManyToOne
+//    @JoinColumn(name = "orgId")
+//    private JiraOrganization jiraOrganization;
 
     // Jira Issue Type
     @OneToMany(mappedBy = "jiraProject")
@@ -75,6 +75,11 @@ public class JiraProject {
     // Jira Issue
     @OneToMany(mappedBy = "jiraProject")
     private List<JiraIssue> jiraIssueList = new ArrayList<>();
+
+    // Jira Issue History
+    @OneToMany(mappedBy = "jiraProject")
+    private List<JiraIssueHistory> jiraIssueHistoryList = new ArrayList<>();
+
 
     @OneToMany(mappedBy = "jiraProject")
     private List<JiraStatus> jiraStatus;

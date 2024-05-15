@@ -18,7 +18,7 @@ public class JiraOrganization {
     // Jira 조직 URL
     @Column(nullable = false)
     private String url;
-
-    @OneToMany(mappedBy = "jiraOrganization")
-    private List<JiraProject> jiraProjectList = new ArrayList<>();
+//
+//    @OneToMany(mappedBy = "jiraOrganization")
+//    private List<JiraProject> jiraProjectList = new ArrayList<>();
 }

@@ -1,5 +1,7 @@
 package com.pbl.tasktoolintegration.jira.entity;
 
+import com.atlassian.adf.jackson2.AdfJackson2;
+import com.pbl.tasktoolintegration.jira.model.dto.GetJiraIssueCommentDto;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -56,4 +58,25 @@ public class JiraComment {
     // Comment History
     @OneToMany(mappedBy = "jiraComment")
     private List<JiraCommentHistory> jiraCommentHistoryList = new ArrayList<>();
+
+    public void updateByDto(GetJiraIssueCommentDto.CommentsItem commentsItemDto, JiraUser authorUser, JiraUser updateAuthorUser) {
+        AdfJackson2 adfJackson2 = new AdfJackson2();
+        this.body = commentsItemDto.getBody() != null ? adfJackson2.marshall(commentsItemDto.getBody()) : null;
+        this.created = commentsItemDto.getCreated();
+        this.updated = commentsItemDto.getUpdated();
+        this.authorUser = authorUser;
+        this.updateAuthorUser = updateAuthorUser;
+    }
+
+    public JiraCommentHistory toHistory() {
+        return JiraCommentHistory.builder()
+                .jiraId(this.jiraId)
+                .body(this.body)
+                .created(this.created)
+                .updated(this.updated)
+                .jiraIssue(this.jiraIssue)
+                .authorUser(this.authorUser)
+                .updateAuthorUser(this.updateAuthorUser)
+                .build();
+    }
 }

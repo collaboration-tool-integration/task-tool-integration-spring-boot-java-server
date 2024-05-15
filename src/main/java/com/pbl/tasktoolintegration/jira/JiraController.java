@@ -2,15 +2,14 @@ package com.pbl.tasktoolintegration.jira;
 
 import com.pbl.tasktoolintegration.jira.model.dto.JiraDeadlineDto;
 import com.pbl.tasktoolintegration.jira.model.dto.JiraResponseTimeDto;
+import com.pbl.tasktoolintegration.jira.model.request.PostJiraWebhookRequest;
 import jakarta.annotation.Nullable;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -42,5 +41,16 @@ public class JiraController {
             @RequestParam(value = "includeParentIssue") boolean includeParentIssue
     ) {
         return ResponseEntity.ok(jiraService.getUserDeadlineExceedInfo(projectId, includeParentIssue));
+    }
+
+    @PostMapping("/webhook")
+    public ResponseEntity<Boolean> postWebhook(
+            @RequestBody PostJiraWebhookRequest requestBody,
+            @RequestParam(value = "projectId", required = true) Long projectId
+    ) {
+        log.info("webhook init");
+        jiraService.receiveJiraWebhook(projectId, requestBody);
+
+        return ResponseEntity.ok(true);
     }
 }

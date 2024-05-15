@@ -1,5 +1,6 @@
 package com.pbl.tasktoolintegration.jira.entity;
 
+import com.pbl.tasktoolintegration.jira.model.dto.GetJiraUserDto;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -64,6 +65,9 @@ public class JiraUser {
     @OneToMany(mappedBy = "creatorUser")
     private List<JiraIssueHistory> creatorJiraIssueHistoryList = new ArrayList<>();
 
+    @OneToMany(mappedBy = "reportUser")
+    private List<JiraIssueHistory> reporterJiraIssueHistoryList = new ArrayList<>();
+
     @OneToMany(mappedBy = "authorUser")
     private List<JiraComment> authorJiraCommentList = new ArrayList<>();
 
@@ -84,5 +88,11 @@ public class JiraUser {
     @Override
     public int hashCode() {
         return Objects.hash(getJiraAccountId());
+    }
+
+    public void updateByDto(GetJiraUserDto jiraUserDto) {
+        this.avatarUrls = jiraUserDto.getAvatarUrls() != null ? jiraUserDto.getAvatarUrls().getJsonMember48x48() : null;
+        this.displayName = jiraUserDto.getDisplayName();
+        this.active = jiraUserDto.isActive();
     }
 }
