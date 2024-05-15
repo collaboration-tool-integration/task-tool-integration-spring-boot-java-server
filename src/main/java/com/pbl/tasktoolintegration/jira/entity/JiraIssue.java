@@ -163,9 +163,6 @@ public class JiraIssue {
                             JiraUser creatorUser,
                             JiraUser reportUser
     ) {
-        // Jira ID가 다른 경우 업데이트 안함
-        if (jiraIssueDto.getId().equals(this.jiraId.toString())) return;
-
         AdfJackson2 adfJackson2 = new AdfJackson2();
 
         this.summary = jiraIssueDto.getFields().getSummary();

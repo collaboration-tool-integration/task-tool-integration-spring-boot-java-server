@@ -505,9 +505,10 @@ public class JiraService {
             }
 
             if (issue != null && !issue.getUpdated().equals(newIssueDto.getFields().getUpdated())) {
-                if(jiraIssueHistoryRepository.findByJiraIdAndUpdated(issue.getJiraId(), issue.getUpdated()).isEmpty()) {
+                if(jiraIssueHistoryRepository.findByJiraIdAndUpdated(issue.getJiraId(), newIssueDto.getFields().getUpdated()).isEmpty()) {
                     jiraIssueHistoryRepository.save(issue.toHistory());
                     issue.updateByDto(newIssueDto, parentIssue, jiraIssueType, jiraStatus, assigneeUser, creatorUser, reportUser);
+                    jiraIssueRepository.save(issue);
                 }
             }
             else {
@@ -546,6 +547,7 @@ public class JiraService {
                     if(jiraCommentHistoryRepository.findByJiraIdAndUpdated(jiraComment.getJiraId(), jiraComment.getUpdated()).isEmpty()) {
                         jiraCommentHistoryRepository.save(jiraComment.toHistory());
                         jiraComment.updateByDto(commentItem, authorUser, updator);
+                        jiraCommentRepository.save(jiraComment);
                     }
                 }
             }
