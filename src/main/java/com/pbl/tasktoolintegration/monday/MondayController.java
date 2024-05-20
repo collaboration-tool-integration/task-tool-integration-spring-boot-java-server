@@ -1,5 +1,6 @@
 package com.pbl.tasktoolintegration.monday;
 
+import com.pbl.tasktoolintegration.monday.entity.ResponseTimeType;
 import com.pbl.tasktoolintegration.monday.model.ActionWebhookDto;
 import com.pbl.tasktoolintegration.monday.model.CatchWebhookReq;
 import com.pbl.tasktoolintegration.monday.model.GetUserExpiredItemDto;
@@ -30,7 +31,16 @@ public class MondayController {
     }
 
     @GetMapping("/response-time")
-    public ResponseEntity<List<GetUserResponseTimeRes>> getUserResponseTime(@RequestParam Long id){
+    public ResponseEntity<List<GetUserResponseTimeRes>> getUserResponseTime(@RequestParam Long id, @RequestParam String type){
+        if(type.toUpperCase().equals(ResponseTimeType.DAILY.name()) || type.toUpperCase().equals(ResponseTimeType.WEEKLY.name()) || type.toUpperCase().equals(ResponseTimeType.MONTHLY.name())) {
+            List<GetUsersAverageResponseTimeDto> usersAverageResponseTime = mondayService.getUsersAverageResponseTimePeriod(id, ResponseTimeType.valueOf(type.toUpperCase()));
+            List<GetUserResponseTimeRes> response = usersAverageResponseTime.stream()
+                .map(GetUserResponseTimeRes::from)
+                .toList();
+
+            return new ResponseEntity(response, HttpStatus.OK);
+        }
+
         List<GetUsersAverageResponseTimeDto> usersAverageResponseTime = mondayService.getUsersAverageResponseTime(id);
 
         List<GetUserResponseTimeRes> response = usersAverageResponseTime.stream()

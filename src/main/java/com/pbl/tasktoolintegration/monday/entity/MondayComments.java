@@ -1,7 +1,9 @@
 package com.pbl.tasktoolintegration.monday.entity;
 
+import com.pbl.tasktoolintegration.monday.util.MondayCommentEntityListener;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
 import jakarta.persistence.JoinColumn;
@@ -18,6 +20,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = lombok.AccessLevel.PROTECTED)
 @IdClass(MondayCommentsId.class)
 @EqualsAndHashCode
+@EntityListeners(MondayCommentEntityListener.class)
 public class MondayComments implements java.io.Serializable {
     @Id
     private String id;

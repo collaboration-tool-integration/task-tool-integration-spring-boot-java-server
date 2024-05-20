@@ -2,6 +2,7 @@ package com.pbl.tasktoolintegration.monday.repository;
 
 import com.pbl.tasktoolintegration.monday.entity.MondayUpdates;
 import com.pbl.tasktoolintegration.monday.entity.MondayUpdatesId;
+import java.util.Date;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -12,4 +13,6 @@ public interface MondayUpdatesRepository extends JpaRepository<MondayUpdates, Mo
 
     @Query(value = "select * from monday_updates  where monday_board_id = ?1", nativeQuery = true)
     List<MondayUpdates> findByMondayBoardId(String id);
+
+    List<MondayUpdates> findByMondayItem_MondayBoardIdAndCreatedAtAfter(String id, Date createdAt);
 }
