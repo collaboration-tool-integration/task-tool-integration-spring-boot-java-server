@@ -1,29 +1,30 @@
 package com.pbl.tasktoolintegration.monday.entity;
 
-import com.pbl.tasktoolintegration.monday.util.MondayUpdateEntityListener;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EntityListeners;
+import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinColumns;
 import jakarta.persistence.ManyToOne;
+import java.sql.Timestamp;
 import java.util.Date;
 import lombok.Builder;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
 
-@Entity(name = "monday_updates")
+@Entity(name = "monday_update_history")
 @Getter
 @NoArgsConstructor(access = lombok.AccessLevel.PROTECTED)
-@IdClass(MondayUpdatesId.class)
-@EqualsAndHashCode
-@EntityListeners(MondayUpdateEntityListener.class)
-public class MondayUpdates implements java.io.Serializable {
+@IdClass(MondayUpdateHistoryId.class)
+public class MondayUpdateHistory {
     @Id
     private String id;
+
+    @Id
+    private Timestamp timestamp;
 
     @ManyToOne
     @JoinColumns({
@@ -47,8 +48,9 @@ public class MondayUpdates implements java.io.Serializable {
     private Date updatedAt;
 
     @Builder
-    public MondayUpdates(String id, MondayItems mondayItem, MondayUsers mondayCreatorUser, Date createdAt, String content, Date updatedAt) {
+    public MondayUpdateHistory(String id, Timestamp timestamp,  MondayItems mondayItem, MondayUsers mondayCreatorUser, Date createdAt, String content, Date updatedAt) {
         this.id = id;
+        this.timestamp = timestamp;
         this.mondayItem = mondayItem;
         this.mondayCreatorUser = mondayCreatorUser;
         this.createdAt = createdAt;
