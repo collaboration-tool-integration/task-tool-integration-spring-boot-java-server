@@ -12,12 +12,14 @@ import lombok.ToString;
 @Builder
 @ToString
 public class GetUsersAverageResponseTimeDto {
+    private String boardId;
     private String boardName;
     private List<ResponseTimeOfUser> responseTimeOfUsers;
 
     @Data
     @Builder
     public static class ResponseTimeOfUser{
+        private String userId;
         private String username;
         private double averageResponseTime;
     }
