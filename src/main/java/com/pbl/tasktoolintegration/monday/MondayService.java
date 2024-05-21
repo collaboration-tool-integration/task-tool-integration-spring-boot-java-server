@@ -6,16 +6,19 @@ import com.pbl.tasktoolintegration.monday.entity.MondayAssignees;
 import com.pbl.tasktoolintegration.monday.entity.MondayAvgResponseTimeEachUser;
 import com.pbl.tasktoolintegration.monday.entity.MondayBoards;
 import com.pbl.tasktoolintegration.monday.entity.MondayBoardsSubscribers;
+import com.pbl.tasktoolintegration.monday.entity.MondayCommentHistory;
 import com.pbl.tasktoolintegration.monday.entity.MondayComments;
 import com.pbl.tasktoolintegration.monday.entity.MondayConfigurations;
 import com.pbl.tasktoolintegration.monday.entity.MondayConfigurationsBoards;
 import com.pbl.tasktoolintegration.monday.entity.MondayConfigurationsUsers;
 import com.pbl.tasktoolintegration.monday.entity.MondayItems;
+import com.pbl.tasktoolintegration.monday.entity.MondayUpdateHistory;
 import com.pbl.tasktoolintegration.monday.entity.MondayUpdates;
 import com.pbl.tasktoolintegration.monday.entity.MondayUsers;
 import com.pbl.tasktoolintegration.monday.entity.ResponseTimeType;
 import com.pbl.tasktoolintegration.monday.model.ActionWebhookDto;
 import com.pbl.tasktoolintegration.monday.model.GetUserExpiredItemDto;
+import com.pbl.tasktoolintegration.monday.model.GetUserNumberOfChangesDto;
 import com.pbl.tasktoolintegration.monday.model.GetUsersAverageResponseTimeDto;
 import com.pbl.tasktoolintegration.monday.model.GetUsersAverageResponseTimeDto.ResponseTimeOfUser;
 import com.pbl.tasktoolintegration.monday.model.MondayAssigneeInfo;
@@ -32,11 +35,13 @@ import com.pbl.tasktoolintegration.monday.repository.MondayAssigneesRepository;
 import com.pbl.tasktoolintegration.monday.repository.MondayAvgResponseTimeEachUserRepository;
 import com.pbl.tasktoolintegration.monday.repository.MondayBoardsRepository;
 import com.pbl.tasktoolintegration.monday.repository.MondayBoardsSubscribersRepository;
+import com.pbl.tasktoolintegration.monday.repository.MondayCommentHistoryRepository;
 import com.pbl.tasktoolintegration.monday.repository.MondayCommentsRepository;
 import com.pbl.tasktoolintegration.monday.repository.MondayConfigurationsBoardsRepository;
 import com.pbl.tasktoolintegration.monday.repository.MondayConfigurationsRepository;
 import com.pbl.tasktoolintegration.monday.repository.MondayConfigurationsUsersRepository;
 import com.pbl.tasktoolintegration.monday.repository.MondayItemsRepository;
+import com.pbl.tasktoolintegration.monday.repository.MondayUpdateHistoryRepository;
 import com.pbl.tasktoolintegration.monday.repository.MondayUpdatesRepository;
 import com.pbl.tasktoolintegration.monday.repository.MondayUsersRepository;
 import graphql.kickstart.spring.webclient.boot.GraphQLRequest;
@@ -73,6 +78,8 @@ public class MondayService {
     private final MondayUpdatesRepository mondayUpdatesRepository;
     private final MondayBoardsSubscribersRepository mondayBoardsSubscribersRepository;
     private final MondayAvgResponseTimeEachUserRepository mondayAvgResponseTimeEachUserRepository;
+    private final MondayUpdateHistoryRepository mondayUpdateHistoryRepository;
+    private final MondayCommentHistoryRepository mondayCommentHistoryRepository;
 
     private List<String> getMentionedUsersInString(String text) {
         List<String> mentionedUsers = new ArrayList<>();
@@ -115,7 +122,6 @@ public class MondayService {
             }
 
             List<MondayUpdates> mondayUpdates;
-            Date now = new Date();
             if (period.equals(ResponseTimeType.DAILY)) {
                 mondayUpdates = mondayUpdatesRepository.findByMondayItem_MondayBoardIdAndCreatedAtAfter(boardId,
                     Timestamp.valueOf(LocalDateTime.now().minusDays(1)));
@@ -582,5 +588,66 @@ public class MondayService {
         }
 
         return usersAverageResponseTime;
+    }
+
+    public List<GetUserNumberOfChangesDto> getUsersNumberOfChanges(Long id) {
+        MondayConfigurations config = mondayConfigurationsRepository.findById(id).get();
+        List<GetUserNumberOfChangesDto> usersNumberOfChanges = new ArrayList<>();
+
+        List<String> mondayBoardIds = mondayConfigurationsBoardsRepository.findByMondayConfiguration(config).stream()
+            .map(MondayConfigurationsBoards::getMondayBoard)
+            .map(MondayBoards::getId)
+            .collect(Collectors.toList());
+
+        for (String boardId : mondayBoardIds) {
+            List<MondayUsers> mondayUsers = mondayBoardsSubscribersRepository.findByMondayBoardId(boardId).stream()
+                .map(MondayBoardsSubscribers::getMondayUser)
+                .collect(Collectors.toList());
+
+            MondayBoards mondayBoard = mondayBoardsRepository.findById(boardId).get();
+
+            Map<String, Integer> userChangeCount = new HashMap<>();
+            for (MondayUsers user : mondayUsers) {
+                userChangeCount.put(user.getName(), 0);
+            }
+
+            List<MondayUpdates> mondayUpdates = mondayUpdatesRepository.findByMondayBoardId(boardId);
+
+           for (MondayUpdates update : mondayUpdates) {
+                MondayUsers creator = update.getMondayCreatorUser();
+
+                List<MondayUpdateHistory> histories = mondayUpdateHistoryRepository.findByMondayUpdateId(update.getId());
+
+                for (int i = 0; i < histories.size()-1; i++) {
+                    if (!histories.get(i).getContent().equals(histories.get(i+1).getContent())) {
+                        userChangeCount.put(creator.getName(), userChangeCount.get(creator.getName()) + 1);
+                    }
+                }
+
+                for (MondayComments comment : mondayCommentsRepository.findByMondayUpdate(update)) {
+                    MondayUsers commentCreator = comment.getMondayCreatorUser();
+
+                    List<MondayCommentHistory> commentHistories = mondayCommentHistoryRepository.findByMondayCommentId(comment.getId());
+
+                    for (int i = 0; i<commentHistories.size()-1; i++) {
+                        if (!commentHistories.get(i).getContent().equals(commentHistories.get(i+1).getContent())) {
+                            userChangeCount.put(commentCreator.getName(), userChangeCount.get(commentCreator.getName()) + 1);
+                        }
+                    }
+                }
+            }
+
+            usersNumberOfChanges.add(GetUserNumberOfChangesDto.builder()
+                .boardName(mondayBoard.getName())
+                .countOfChanges(userChangeCount.entrySet().stream()
+                    .map(entry -> GetUserNumberOfChangesDto.CountOfChangesEachUser.builder()
+                        .username(entry.getKey())
+                        .totalChanges(entry.getValue())
+                        .build())
+                    .collect(Collectors.toList()))
+                .build());
+        }
+
+        return usersNumberOfChanges;
     }
 }

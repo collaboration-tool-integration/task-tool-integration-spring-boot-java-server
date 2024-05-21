@@ -5,6 +5,8 @@ import com.pbl.tasktoolintegration.monday.model.ActionWebhookDto;
 import com.pbl.tasktoolintegration.monday.model.CatchWebhookReq;
 import com.pbl.tasktoolintegration.monday.model.GetUserExpiredItemDto;
 import com.pbl.tasktoolintegration.monday.model.GetUserExpiredItemRes;
+import com.pbl.tasktoolintegration.monday.model.GetUserNumberOfChangesDto;
+import com.pbl.tasktoolintegration.monday.model.GetUserNumberOfChangesRes;
 import com.pbl.tasktoolintegration.monday.model.GetUserResponseTimeRes;
 import com.pbl.tasktoolintegration.monday.model.GetUsersAverageResponseTimeDto;
 import com.pbl.tasktoolintegration.monday.model.MondayWebhookRes;
@@ -57,6 +59,17 @@ public class MondayController {
 
         List<GetUserExpiredItemRes> response = usersExpiredItem.stream()
             .map(GetUserExpiredItemRes::from)
+            .toList();
+
+        return new ResponseEntity(response, HttpStatus.OK);
+    }
+
+    @GetMapping("/number-of-changes")
+    public ResponseEntity<List<GetUserNumberOfChangesRes>> getUserNumberOfChanges(@RequestParam Long id) {
+        List<GetUserNumberOfChangesDto> usersNumberOfChanges = mondayService.getUsersNumberOfChanges(id);
+
+        List<GetUserNumberOfChangesRes> response = usersNumberOfChanges.stream()
+            .map(GetUserNumberOfChangesRes::from)
             .toList();
 
         return new ResponseEntity(response, HttpStatus.OK);
