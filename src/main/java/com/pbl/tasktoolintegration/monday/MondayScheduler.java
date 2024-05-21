@@ -19,7 +19,6 @@ public class MondayScheduler {
         for (Long mondayConfigId : mondayConfigIds) {
             mondayService.syncUsers(mondayConfigId);
             mondayService.syncBoardsWithItems(mondayConfigId);
-            mondayService.syncUpdatesAndComments(mondayConfigId);
         }
     }
 

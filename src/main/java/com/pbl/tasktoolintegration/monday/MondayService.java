@@ -22,6 +22,7 @@ import com.pbl.tasktoolintegration.monday.model.GetUserNumberOfChangesDto;
 import com.pbl.tasktoolintegration.monday.model.GetUsersAverageResponseTimeDto;
 import com.pbl.tasktoolintegration.monday.model.GetUsersAverageResponseTimeDto.ResponseTimeOfUser;
 import com.pbl.tasktoolintegration.monday.model.MondayAssigneeInfo;
+import com.pbl.tasktoolintegration.monday.model.MondayGetUpdateByIdRes;
 import com.pbl.tasktoolintegration.monday.model.MondayStatusColumnInfo;
 import com.pbl.tasktoolintegration.monday.model.MondayStatusInfo;
 import com.pbl.tasktoolintegration.monday.model.MondayTimelineColumnInfo;
@@ -521,16 +522,42 @@ public class MondayService {
 
     public void actionWebhook(ActionWebhookDto actionWebhookDto) {
         switch (actionWebhookDto.getType()) {
-            case "change_name":
+            case "create_update": case "edit_update":
+                MondayConfigurations mondayConfiguration = mondayConfigurationsBoardsRepository.findByMondayBoard_Id(actionWebhookDto.getBoardId()).get(0).getMondayConfiguration();
+                patchUpdateByUpdateId(mondayConfiguration.getApiKey(), actionWebhookDto.getUpdateId());
                 break;
-            case "change_column_value":
-                break;
-            case "create_item":
-                break;
-            case "create_update":
-                break;
-            case "edit_update":
-                break;
+        }
+    }
+
+    public void patchUpdateByUpdateId(String apiKey, String id) {
+        GraphQLRequest updateRequest = GraphQLRequest.builder()
+            .query(String.format(ModnayQuery.MONDAY_GET_UPDATE_BY_ID.getQuery(), id))
+            .build();
+        MondayGetUpdateByIdRes update = mondayWebClient.post()
+            .bodyValue(updateRequest.getRequestBody())
+            .header("Authorization", apiKey)
+            .retrieve()
+            .bodyToMono(MondayGetUpdateByIdRes.class)
+            .block();
+        MondayItems item = mondayItemsRepository.findByUniqueId(update.getData().getUpdates().get(0).getItem_id()).get(0);
+        MondayUpdates savedUpdate = mondayUpdatesRepository.save(MondayUpdates.builder()
+            .id(id)
+            .mondayItem(item)
+            .mondayCreatorUser(mondayUsersRepository.findById(update.getData().getUpdates().get(0).getCreator_id()).get())
+            .createdAt(update.getData().getUpdates().get(0).getCreated_at())
+            .content(update.getData().getUpdates().get(0).getText_body())
+            .updatedAt(update.getData().getUpdates().get(0).getUpdated_at())
+            .build());
+
+        for (MondayGetUpdateByIdRes.Reply reply : update.getData().getUpdates().get(0).getReplies()) {
+            mondayCommentsRepository.save(MondayComments.builder()
+                .id(reply.getId())
+                .mondayUpdate(savedUpdate)
+                .mondayCreatorUser(mondayUsersRepository.findById(reply.getCreator_id()).get())
+                .createdAt(reply.getCreated_at())
+                .updatedAt(reply.getUpdated_at())
+                .content(reply.getText_body())
+                .build());
         }
     }
 
