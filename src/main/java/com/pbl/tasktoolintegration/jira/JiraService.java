@@ -274,8 +274,9 @@ public class JiraService {
         int startAt = 0;
 
         List<JiraUser> jiraUserList = jiraUserRepository.findAll();
+        JiraProjectKey projectKey = jiraProject.getJiraProjectKeyList().stream().findFirst().orElseThrow(() -> new RuntimeException("Project Key Not Registered"));
         while (true) {
-            JiraSearchApiPaging fetchIssueResult = getJiraParentIssueList(startAt, 50);
+            JiraSearchApiPaging fetchIssueResult = getJiraParentIssueList(startAt, 50, projectKey.getKey());
             if (fetchIssueResult.getIssues() == null || fetchIssueResult.getIssues().isEmpty())
                 break;
 
@@ -297,8 +298,9 @@ public class JiraService {
         int startAt = 0;
 
         List<JiraUser> jiraUserList = jiraUserRepository.findAll();
+        JiraProjectKey projectKey = jiraProject.getJiraProjectKeyList().stream().findFirst().orElseThrow(() -> new RuntimeException("Project Key Not Registered"));
         while (true) {
-            JiraSearchApiPaging fetchIssueResult = getJiraSubtaskList(startAt, 50);
+            JiraSearchApiPaging fetchIssueResult = getJiraSubtaskList(startAt, 50, projectKey.getKey());
             if (fetchIssueResult.getIssues() == null || fetchIssueResult.getIssues().isEmpty())
                 break;
 
@@ -382,11 +384,11 @@ public class JiraService {
         jiraIssueTypeRepository.saveAllAndFlush(jiraIssueTypeList);
     }
 
-    private JiraSearchApiPaging getJiraParentIssueList(int startAt, int maxResult) {
+    private JiraSearchApiPaging getJiraParentIssueList(int startAt, int maxResult, String projectKey) {
         return jiraWebClient
                 .get()
                 .uri(uriBuilder -> uriBuilder.pathSegment( "search")
-                        .queryParam("jql", "type NOT IN subTaskIssueTypes() ORDER BY CREATED ASC")
+                        .queryParam("jql", "project = " + projectKey + " AND type NOT IN subTaskIssueTypes() ORDER BY CREATED ASC")
                         .queryParam("startAt", startAt)
                         .queryParam("maxResult", maxResult)
                         .queryParam("fields", "*all")
@@ -397,11 +399,11 @@ public class JiraService {
                 .block();
     }
 
-    private JiraSearchApiPaging getJiraSubtaskList(int startAt, int maxResult) {
+    private JiraSearchApiPaging getJiraSubtaskList(int startAt, int maxResult, String projectKey) {
         return jiraWebClient
                 .get()
                 .uri(uriBuilder -> uriBuilder.pathSegment( "search")
-                        .queryParam("jql", "type IN subTaskIssueTypes() ORDER BY CREATED ASC")
+                        .queryParam("jql", "project = " + projectKey + " AND type IN subTaskIssueTypes() ORDER BY CREATED ASC")
                         .queryParam("startAt", startAt)
                         .queryParam("maxResult", maxResult)
                         .queryParam("fields", "*all")
