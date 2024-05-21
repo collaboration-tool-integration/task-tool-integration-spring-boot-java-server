@@ -347,25 +347,23 @@ public class MondayService {
         return response;
     }
 
-    public void syncUsers(List<Long> mondayConfigurationIds) {
-        for (Long id : mondayConfigurationIds) {
-            MondayConfigurations mondayConfiguration = mondayConfigurationsRepository.findById(id)
-                .get();
-            List<GetAllMondayUsersDto> mondayUsers = getAllMondayUsers(mondayConfiguration.getApiKey());
-            for (GetAllMondayUsersDto user : mondayUsers) {
-                MondayUsers savedUser = mondayUsersRepository.save(MondayUsers.builder()
-                    .id(user.getId())
-                    .createdAt(user.getCreatedAt())
-                    .email(user.getEmail())
-                    .name(user.getName())
-                    .phoneNumber(user.getPhoneNumber())
-                    .title(user.getTitle())
-                    .build());
-                mondayConfigurationsUsersRepository.save(MondayConfigurationsUsers.builder()
-                    .mondayConfiguration(mondayConfiguration)
-                    .mondayUser(savedUser)
-                    .build());
-            }
+    public void syncUsers(Long id) {
+        MondayConfigurations mondayConfiguration = mondayConfigurationsRepository.findById(id)
+            .get();
+        List<GetAllMondayUsersDto> mondayUsers = getAllMondayUsers(mondayConfiguration.getApiKey());
+        for (GetAllMondayUsersDto user : mondayUsers) {
+            MondayUsers savedUser = mondayUsersRepository.save(MondayUsers.builder()
+                .id(user.getId())
+                .createdAt(user.getCreatedAt())
+                .email(user.getEmail())
+                .name(user.getName())
+                .phoneNumber(user.getPhoneNumber())
+                .title(user.getTitle())
+                .build());
+            mondayConfigurationsUsersRepository.save(MondayConfigurationsUsers.builder()
+                .mondayConfiguration(mondayConfiguration)
+                .mondayUser(savedUser)
+                .build());
         }
     }
 
@@ -445,83 +443,79 @@ public class MondayService {
         } while (cursor != null);
     }
 
-    public void syncBoardsWithItems(List<Long> mondayConfigurationIds)
+    public void syncBoardsWithItems(Long id)
         throws JsonProcessingException {
-        for (Long id : mondayConfigurationIds) {
-            MondayConfigurations mondayConfiguration = mondayConfigurationsRepository.findById(id)
-                .get();
-            List<GetAllMondayBoardsDto> mondayBoards = getAllMondayBoards(mondayConfiguration.getApiKey());
-            for (GetAllMondayBoardsDto board : mondayBoards) {
-                MondayBoards savedBoard = mondayBoardsRepository.save(MondayBoards.builder()
-                    .id(board.getId())
-                    .name(board.getName())
-                    .updatedAt(board.getUpdatedAt())
-                    .build());
-                mondayConfigurationsBoardsRepository.save(MondayConfigurationsBoards.builder()
-                    .mondayConfiguration(mondayConfiguration)
+        MondayConfigurations mondayConfiguration = mondayConfigurationsRepository.findById(id)
+            .get();
+        List<GetAllMondayBoardsDto> mondayBoards = getAllMondayBoards(mondayConfiguration.getApiKey());
+        for (GetAllMondayBoardsDto board : mondayBoards) {
+            MondayBoards savedBoard = mondayBoardsRepository.save(MondayBoards.builder()
+                .id(board.getId())
+                .name(board.getName())
+                .updatedAt(board.getUpdatedAt())
+                .build());
+            mondayConfigurationsBoardsRepository.save(MondayConfigurationsBoards.builder()
+                .mondayConfiguration(mondayConfiguration)
+                .mondayBoard(savedBoard)
+                .build());
+
+            List<MondayUsers> users = mondayUsersRepository.findByIdIn(board.getSubscriberIds());
+            for (MondayUsers user : users) {
+                mondayBoardsSubscribersRepository.save(MondayBoardsSubscribers.builder()
                     .mondayBoard(savedBoard)
+                    .mondayUser(user)
                     .build());
-
-                List<MondayUsers> users = mondayUsersRepository.findByIdIn(board.getSubscriberIds());
-                for (MondayUsers user : users) {
-                    mondayBoardsSubscribersRepository.save(MondayBoardsSubscribers.builder()
-                        .mondayBoard(savedBoard)
-                        .mondayUser(user)
-                        .build());
-                }
-
-                syncItemsByBoardId(savedBoard.getId(), mondayConfiguration.getApiKey());
             }
+
+            syncItemsByBoardId(savedBoard.getId(), mondayConfiguration.getApiKey());
         }
     }
 
-    public void syncUpdatesAndComments(List<Long> mondayConfigurationIds) {
-        for (Long id : mondayConfigurationIds) {
-            MondayConfigurations mondayConfiguration = mondayConfigurationsRepository.findById(id)
-                .get();
-            String apiKey = mondayConfiguration.getApiKey();
+    public void syncUpdatesAndComments(Long id) {
+        MondayConfigurations mondayConfiguration = mondayConfigurationsRepository.findById(id)
+            .get();
+        String apiKey = mondayConfiguration.getApiKey();
 
-            int page = 1;
-            while (true) {
-                GraphQLRequest updateRequest = GraphQLRequest.builder()
-                    .query(String.format(ModnayQuery.MODNAY_GET_ALL_UPDDATES_WITH_COMMENTS_PAGE.getQuery(), page))
-                    .build();
-                MondayGetAllUpdatesWithCommentRes updates = mondayWebClient.post()
-                    .bodyValue(updateRequest.getRequestBody())
-                    .header("Authorization", apiKey)
-                    .retrieve()
-                    .bodyToMono(MondayGetAllUpdatesWithCommentRes.class)
-                    .block();
+        int page = 1;
+        while (true) {
+            GraphQLRequest updateRequest = GraphQLRequest.builder()
+                .query(String.format(ModnayQuery.MODNAY_GET_ALL_UPDDATES_WITH_COMMENTS_PAGE.getQuery(), page))
+                .build();
+            MondayGetAllUpdatesWithCommentRes updates = mondayWebClient.post()
+                .bodyValue(updateRequest.getRequestBody())
+                .header("Authorization", apiKey)
+                .retrieve()
+                .bodyToMono(MondayGetAllUpdatesWithCommentRes.class)
+                .block();
 
-                if (updates.getData().getUpdates().size() == 0) {
-                    break;
-                }
-
-                for (MondayGetAllUpdatesWithCommentRes.Update update : updates.getData().getUpdates()) {
-                    MondayItems item = mondayItemsRepository.findByUniqueId(update.getItem_id()).get(0);
-                    MondayUpdates savedUpdate = mondayUpdatesRepository.save(MondayUpdates.builder()
-                        .id(update.getId())
-                        .mondayItem(item)
-                        .mondayCreatorUser(mondayUsersRepository.findById(update.getCreator_id()).get())
-                        .createdAt(update.getCreated_at())
-                        .content(update.getText_body())
-                        .updatedAt(update.getUpdated_at())
-                        .build());
-
-                    for (MondayGetAllUpdatesWithCommentRes.Reply reply : update.getReplies()) {
-                        mondayCommentsRepository.save(MondayComments.builder()
-                            .id(reply.getId())
-                            .mondayUpdate(savedUpdate)
-                            .mondayCreatorUser(
-                                mondayUsersRepository.findById(reply.getCreator_id()).get())
-                            .createdAt(reply.getCreated_at())
-                            .updatedAt(reply.getUpdated_at())
-                            .content(reply.getText_body())
-                            .build());
-                    }
-                }
-                page++;
+            if (updates.getData().getUpdates().size() == 0) {
+                break;
             }
+
+            for (MondayGetAllUpdatesWithCommentRes.Update update : updates.getData().getUpdates()) {
+                MondayItems item = mondayItemsRepository.findByUniqueId(update.getItem_id()).get(0);
+                MondayUpdates savedUpdate = mondayUpdatesRepository.save(MondayUpdates.builder()
+                    .id(update.getId())
+                    .mondayItem(item)
+                    .mondayCreatorUser(mondayUsersRepository.findById(update.getCreator_id()).get())
+                    .createdAt(update.getCreated_at())
+                    .content(update.getText_body())
+                    .updatedAt(update.getUpdated_at())
+                    .build());
+
+                for (MondayGetAllUpdatesWithCommentRes.Reply reply : update.getReplies()) {
+                    mondayCommentsRepository.save(MondayComments.builder()
+                        .id(reply.getId())
+                        .mondayUpdate(savedUpdate)
+                        .mondayCreatorUser(
+                            mondayUsersRepository.findById(reply.getCreator_id()).get())
+                        .createdAt(reply.getCreated_at())
+                        .updatedAt(reply.getUpdated_at())
+                        .content(reply.getText_body())
+                        .build());
+                }
+            }
+            page++;
         }
     }
 
@@ -649,5 +643,21 @@ public class MondayService {
         }
 
         return usersNumberOfChanges;
+    }
+
+    public Long registerMondayConfiguration(String apiKey){
+        MondayConfigurations mondayConfiguration = mondayConfigurationsRepository.save(MondayConfigurations.builder()
+            .apiKey(apiKey)
+            .build());
+
+        syncUsers(mondayConfiguration.getId());
+        try{
+            syncBoardsWithItems(mondayConfiguration.getId());
+        }catch (JsonProcessingException e) {
+            log.error("syncBoardsWithItems error : {}", e.getMessage());
+        }
+        syncUpdatesAndComments(mondayConfiguration.getId());
+
+        return mondayConfiguration.getId();
     }
 }

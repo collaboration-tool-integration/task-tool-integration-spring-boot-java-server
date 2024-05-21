@@ -15,9 +15,12 @@ public class MondayScheduler {
     @Scheduled(fixedRate = 1000 * 60 * 3)
     public void syncMondayDate() throws JsonProcessingException {
         List<Long> mondayConfigIds = mondayService.getMondayConfigIds();
-        mondayService.syncUsers(mondayConfigIds);
-        mondayService.syncBoardsWithItems(mondayConfigIds);
-        mondayService.syncUpdatesAndComments(mondayConfigIds);
+
+        for (Long mondayConfigId : mondayConfigIds) {
+            mondayService.syncUsers(mondayConfigId);
+            mondayService.syncBoardsWithItems(mondayConfigId);
+            mondayService.syncUpdatesAndComments(mondayConfigId);
+        }
     }
 
 //    @Scheduled(fixedRate = 1000 * 60 * 5)
