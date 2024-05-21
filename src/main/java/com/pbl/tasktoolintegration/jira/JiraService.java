@@ -5,6 +5,7 @@ import com.atlassian.adf.model.node.Mention;
 import com.pbl.tasktoolintegration.jira.entity.*;
 import com.pbl.tasktoolintegration.jira.model.dto.*;
 import com.pbl.tasktoolintegration.jira.model.request.PostJiraWebhookRequest;
+import com.pbl.tasktoolintegration.jira.model.request.ResponseTimeUnit;
 import com.pbl.tasktoolintegration.jira.repository.*;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
@@ -14,9 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import java.time.Duration;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.*;
 import java.util.*;
 
 @Slf4j
@@ -82,7 +81,7 @@ public class JiraService {
     }
 
     @Transactional(readOnly = true)
-    public List<JiraResponseTimeDto> getJiraUserResponseTime(Long projectId) {
+    public List<JiraResponseTimeDto> getJiraUserResponseTime(Long projectId, ResponseTimeUnit unit, LocalDate targetDate) {
         @Setter
         @Getter
         @AllArgsConstructor
@@ -97,14 +96,58 @@ public class JiraService {
         }
 
         HashMap<JiraUser, JiraUserIssueResponseTime> responseTimeHashMap = new HashMap<>();
+        List<JiraUser> jiraUserList = jiraUserRepository.findAll();
+        jiraUserList.forEach(user -> responseTimeHashMap.put(user, new JiraUserIssueResponseTime(0, 0.0)));
+
         List<JiraIssue> jiraIssueList;
 
+        log.info(unit.toString());
+        log.info(targetDate.toString());
+
+        JiraProject jiraProject = null;
         if (projectId != null) {
-            JiraProject jiraProject = jiraProjectRepository.findById(projectId).orElseThrow(() -> new RuntimeException("Not Found"));
-            jiraIssueList = jiraIssueRepository.findAllByJiraProjectAndDescriptionNotNullAndJiraCommentListNotEmpty(jiraProject);
+            jiraProject = jiraProjectRepository.findById(projectId).orElseThrow(() -> new RuntimeException("Not Found"));
+        }
+
+
+        if (unit == ResponseTimeUnit.ALL) {
+            jiraIssueList = jiraProject != null
+                    ? jiraIssueRepository.findAllByJiraProjectAndDescriptionNotNullAndJiraCommentListNotEmpty(jiraProject)
+                    : jiraIssueRepository.findAllByDescriptionNotNullAndJiraCommentListNotEmpty();
         }
         else {
-            jiraIssueList = jiraIssueRepository.findAllByDescriptionNotNullAndJiraCommentListNotEmpty();
+            LocalDateTime startDateTime;
+            LocalDateTime endDateTime;
+
+            switch (unit) {
+                // 월별
+                case MONTHLY -> {
+                    // 기준 날짜가 속한 달 1일 00시부터
+                    startDateTime = targetDate.withDayOfMonth(1).atStartOfDay();
+                    // 기준 날짜가 속한 달 마지막날 23시 59분까지
+                    endDateTime = targetDate.withDayOfMonth(targetDate.getMonth().length(targetDate.isLeapYear())).atTime(LocalTime.MAX);
+                    break;
+                }
+                // 주별
+                case WEEKLY -> {
+                    // 기준 날짜가 속한 주의 월요일 00시부터
+                    startDateTime = targetDate.with(DayOfWeek.MONDAY).atStartOfDay();
+                    // 기준 날짜가 속한 주의 일요일 23시 59분까지
+                    endDateTime = targetDate.with(DayOfWeek.SUNDAY).atTime(LocalTime.MAX);
+                    break;
+                }
+                // 기본: 일별
+                default -> {
+                    // 기준 날짜의 00시부터
+                    startDateTime = targetDate.atStartOfDay();
+                    // 기준 날짜의 23시 59분까지
+                    endDateTime = targetDate.atTime(LocalTime.MAX);
+                }
+            }
+
+            jiraIssueList = jiraProject != null
+                    ? jiraIssueRepository.findAllByJiraProjectAndDescriptionNotNullAndJiraCommentListNotEmptyAndCreatedBetween(jiraProject, startDateTime, endDateTime)
+                    : jiraIssueRepository.findAllByDescriptionNotNullAndJiraCommentListNotEmptyAndCreatedBetween(startDateTime, endDateTime);
         }
 
         log.info("issue size: " + jiraIssueList.size());

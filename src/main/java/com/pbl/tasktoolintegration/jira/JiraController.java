@@ -2,7 +2,9 @@ package com.pbl.tasktoolintegration.jira;
 
 import com.pbl.tasktoolintegration.jira.model.dto.JiraDeadlineDto;
 import com.pbl.tasktoolintegration.jira.model.dto.JiraResponseTimeDto;
+import com.pbl.tasktoolintegration.jira.model.request.GetJiraResponseTimeQuery;
 import com.pbl.tasktoolintegration.jira.model.request.PostJiraWebhookRequest;
+import com.pbl.tasktoolintegration.jira.model.request.ResponseTimeUnit;
 import jakarta.annotation.Nullable;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -30,9 +32,8 @@ public class JiraController {
 
     @GetMapping("/response-time")
     public ResponseEntity<List<JiraResponseTimeDto>> getResponseTimeByProject(
-            @RequestParam(value = "projectId", required = false) Long projectId
-    ) {
-        return ResponseEntity.ok(jiraService.getJiraUserResponseTime(projectId));
+            @ModelAttribute GetJiraResponseTimeQuery query) {
+        return ResponseEntity.ok(jiraService.getJiraUserResponseTime(query.getProjectId(), query.getResponseTimeUnit(), query.getTargetDate()));
     }
 
     @GetMapping("/deadline-exceeded")
