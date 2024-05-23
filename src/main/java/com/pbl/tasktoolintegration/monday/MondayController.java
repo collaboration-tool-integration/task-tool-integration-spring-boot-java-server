@@ -1,17 +1,17 @@
 package com.pbl.tasktoolintegration.monday;
 
 import com.pbl.tasktoolintegration.monday.entity.ResponseTimeType;
-import com.pbl.tasktoolintegration.monday.model.ActionWebhookDto;
-import com.pbl.tasktoolintegration.monday.model.CatchWebhookReq;
-import com.pbl.tasktoolintegration.monday.model.GetUserExpiredItemDto;
-import com.pbl.tasktoolintegration.monday.model.GetUserExpiredItemRes;
-import com.pbl.tasktoolintegration.monday.model.GetUserNumberOfChangesDto;
-import com.pbl.tasktoolintegration.monday.model.GetUserNumberOfChangesRes;
-import com.pbl.tasktoolintegration.monday.model.GetUserResponseTimeRes;
-import com.pbl.tasktoolintegration.monday.model.GetUsersAverageResponseTimeDto;
-import com.pbl.tasktoolintegration.monday.model.MondayWebhookRes;
-import com.pbl.tasktoolintegration.monday.model.RegisterMondayConfigurationReq;
-import com.pbl.tasktoolintegration.monday.model.RegisterMondayConfigurationRes;
+import com.pbl.tasktoolintegration.monday.model.dto.ActionWebhookDto;
+import com.pbl.tasktoolintegration.monday.model.request.CatchWebhookReq;
+import com.pbl.tasktoolintegration.monday.model.dto.GetUserExpiredItemDto;
+import com.pbl.tasktoolintegration.monday.model.response.GetUserExpiredItemRes;
+import com.pbl.tasktoolintegration.monday.model.dto.GetUserNumberOfChangesDto;
+import com.pbl.tasktoolintegration.monday.model.response.GetUserNumberOfChangesRes;
+import com.pbl.tasktoolintegration.monday.model.response.GetUserResponseTimeRes;
+import com.pbl.tasktoolintegration.monday.model.dto.GetUsersAverageResponseTimeDto;
+import com.pbl.tasktoolintegration.monday.model.response.MondayWebhookRes;
+import com.pbl.tasktoolintegration.monday.model.request.RegisterMondayConfigurationReq;
+import com.pbl.tasktoolintegration.monday.model.response.RegisterMondayConfigurationRes;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@RestController
+@RestController("/monday")
 @RequiredArgsConstructor
 @Slf4j
 public class MondayController {
@@ -51,7 +51,7 @@ public class MondayController {
                 .map(GetUserResponseTimeRes::from)
                 .toList();
 
-            return new ResponseEntity(response, HttpStatus.OK);
+            return new ResponseEntity<>(response, HttpStatus.OK);
         }
 
         List<GetUsersAverageResponseTimeDto> usersAverageResponseTime = mondayService.getUsersAverageResponseTime(id);
@@ -60,7 +60,7 @@ public class MondayController {
             .map(GetUserResponseTimeRes::from)
             .toList();
 
-        return new ResponseEntity(response, HttpStatus.OK);
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
     @GetMapping("/expired-item")
@@ -72,7 +72,7 @@ public class MondayController {
             .map(GetUserExpiredItemRes::from)
             .toList();
 
-        return new ResponseEntity(response, HttpStatus.OK);
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
     @GetMapping("/number-of-changes")
@@ -83,10 +83,10 @@ public class MondayController {
             .map(GetUserNumberOfChangesRes::from)
             .toList();
 
-        return new ResponseEntity(response, HttpStatus.OK);
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    @PostMapping("/monday/webhook/update")
+    @PostMapping("/webhook/update")
     public ResponseEntity<MondayWebhookRes> catchUpdateWebhook(@RequestBody CatchWebhookReq catchWebhookReq) {
         if (catchWebhookReq.getEvent() != null) {
             ActionWebhookDto actionWebhookDto = ActionWebhookDto.from(catchWebhookReq.getEvent());

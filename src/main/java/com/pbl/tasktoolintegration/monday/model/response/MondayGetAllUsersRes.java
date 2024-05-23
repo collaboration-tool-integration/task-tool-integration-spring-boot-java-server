@@ -1,14 +1,8 @@
-package com.pbl.tasktoolintegration.monday.model;
+package com.pbl.tasktoolintegration.monday.model.response;
 
 import java.util.Date;
 import java.util.List;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
 
 @Data
 public class MondayGetAllUsersRes {

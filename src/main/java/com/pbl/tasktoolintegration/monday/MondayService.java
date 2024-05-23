@@ -1,5 +1,9 @@
 package com.pbl.tasktoolintegration.monday;
 
+import static com.pbl.tasktoolintegration.monday.exception.BaseExceptionStatus.BOARD_NOT_FOUND;
+import static com.pbl.tasktoolintegration.monday.exception.BaseExceptionStatus.CONFIG_NOT_FOUND;
+import static com.pbl.tasktoolintegration.monday.exception.BaseExceptionStatus.MONDAY_SERVER_ERROR;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pbl.tasktoolintegration.monday.entity.MondayAssignees;
@@ -16,22 +20,23 @@ import com.pbl.tasktoolintegration.monday.entity.MondayUpdateHistory;
 import com.pbl.tasktoolintegration.monday.entity.MondayUpdates;
 import com.pbl.tasktoolintegration.monday.entity.MondayUsers;
 import com.pbl.tasktoolintegration.monday.entity.ResponseTimeType;
-import com.pbl.tasktoolintegration.monday.model.ActionWebhookDto;
-import com.pbl.tasktoolintegration.monday.model.GetUserExpiredItemDto;
-import com.pbl.tasktoolintegration.monday.model.GetUserNumberOfChangesDto;
-import com.pbl.tasktoolintegration.monday.model.GetUsersAverageResponseTimeDto;
-import com.pbl.tasktoolintegration.monday.model.GetUsersAverageResponseTimeDto.ResponseTimeOfUser;
-import com.pbl.tasktoolintegration.monday.model.MondayAssigneeInfo;
-import com.pbl.tasktoolintegration.monday.model.MondayGetUpdateByIdRes;
-import com.pbl.tasktoolintegration.monday.model.MondayStatusColumnInfo;
-import com.pbl.tasktoolintegration.monday.model.MondayStatusInfo;
-import com.pbl.tasktoolintegration.monday.model.MondayTimelineColumnInfo;
-import com.pbl.tasktoolintegration.monday.model.GetAllMondayBoardsDto;
-import com.pbl.tasktoolintegration.monday.model.GetAllMondayItemsWIthCursorRes;
-import com.pbl.tasktoolintegration.monday.model.GetAllMondayUsersDto;
-import com.pbl.tasktoolintegration.monday.model.MondayGetAllBoardsRes;
-import com.pbl.tasktoolintegration.monday.model.MondayGetAllUpdatesWithCommentRes;
-import com.pbl.tasktoolintegration.monday.model.MondayGetAllUsersRes;
+import com.pbl.tasktoolintegration.monday.exception.BaseException;
+import com.pbl.tasktoolintegration.monday.model.dto.ActionWebhookDto;
+import com.pbl.tasktoolintegration.monday.model.dto.GetUserExpiredItemDto;
+import com.pbl.tasktoolintegration.monday.model.dto.GetUserNumberOfChangesDto;
+import com.pbl.tasktoolintegration.monday.model.dto.GetUsersAverageResponseTimeDto;
+import com.pbl.tasktoolintegration.monday.model.dto.GetUsersAverageResponseTimeDto.ResponseTimeOfUser;
+import com.pbl.tasktoolintegration.monday.model.mondayProperty.MondayAssigneeInfo;
+import com.pbl.tasktoolintegration.monday.model.response.MondayGetUpdateByIdRes;
+import com.pbl.tasktoolintegration.monday.model.mondayProperty.MondayStatusColumnInfo;
+import com.pbl.tasktoolintegration.monday.model.mondayProperty.MondayStatusInfo;
+import com.pbl.tasktoolintegration.monday.model.mondayProperty.MondayTimelineColumnInfo;
+import com.pbl.tasktoolintegration.monday.model.dto.GetAllMondayBoardsDto;
+import com.pbl.tasktoolintegration.monday.model.response.GetAllMondayItemsWIthCursorRes;
+import com.pbl.tasktoolintegration.monday.model.dto.GetAllMondayUsersDto;
+import com.pbl.tasktoolintegration.monday.model.response.MondayGetAllBoardsRes;
+import com.pbl.tasktoolintegration.monday.model.response.MondayGetAllUpdatesWithCommentRes;
+import com.pbl.tasktoolintegration.monday.model.response.MondayGetAllUsersRes;
 import com.pbl.tasktoolintegration.monday.repository.MondayAssigneesRepository;
 import com.pbl.tasktoolintegration.monday.repository.MondayAvgResponseTimeEachUserRepository;
 import com.pbl.tasktoolintegration.monday.repository.MondayBoardsRepository;
@@ -53,6 +58,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -94,34 +100,73 @@ public class MondayService {
         return mentionedUsers;
     }
 
+    public MondayConfigurations getMondayConfigById(Long id) {
+        return mondayConfigurationsRepository.findById(id).orElseThrow(() -> new BaseException(CONFIG_NOT_FOUND));
+    }
+
+    public MondayBoards getMondayBoardById(String id) {
+        return mondayBoardsRepository.findById(id).orElseThrow(() -> new BaseException(BOARD_NOT_FOUND));
+    }
+
     private int calculateResponseTime(Date startDate, Date endDate) {
         long diff = endDate.getTime() - startDate.getTime();
         return (int) (diff / 1000);
     }
 
+    private Map<String, List<Integer>> initiateUserResponseTimeMap(List<MondayUsers> mondayUsers, List<MondayUpdates> mondayUpdates) {
+        Map<String, List<Integer>> userResponseTimeMap = new HashMap<>();
+        for (MondayUsers user : mondayUsers) {
+            userResponseTimeMap.put(user.getName(), new ArrayList<>());
+        }
+
+        for (MondayUpdates update : mondayUpdates) {
+            List<String> mentionedUsers = getMentionedUsersInString(update.getContent());
+            if (!mentionedUsers.isEmpty()) {
+                Date startDate = update.getCreatedAt();
+                List<String> leftUsers = new ArrayList<>(mentionedUsers);
+                List<MondayComments> mondayComments = mondayCommentsRepository.findByMondayUpdate(update);
+                for (MondayComments comment : mondayComments) {
+                    if (mentionedUsers.contains(comment.getMondayCreatorUser().getName()) && leftUsers.contains(comment.getMondayCreatorUser().getName())){
+                        int diffSeconds = calculateResponseTime(startDate, comment.getCreatedAt());
+
+                        // 현재 삭제된 유저의 경우에는 현재 구독자로 남아있지 않으며 언급은 되어있을 수 있기 때문에 체크
+                        if (userResponseTimeMap.containsKey(comment.getMondayCreatorUser().getName())) {
+                            userResponseTimeMap.get(comment.getMondayCreatorUser().getName()).add(diffSeconds);
+                            leftUsers.remove(comment.getMondayCreatorUser().getName());
+                        }
+                    }
+                }
+            }
+        }
+
+        return userResponseTimeMap;
+    }
+
+    private Map<String, String> initiateUserNameIdMap(List<MondayUsers> mondayUsers) {
+        Map<String, String> userNameIdMap = new HashMap<>();
+        for (MondayUsers user : mondayUsers) {
+            userNameIdMap.put(user.getName(), user.getId());
+        }
+        return userNameIdMap;
+    }
+
     public List<GetUsersAverageResponseTimeDto> getUsersAverageResponseTime(Long id, ResponseTimeType period) {
-        MondayConfigurations config = mondayConfigurationsRepository.findById(id).get();
+        MondayConfigurations config = getMondayConfigById(id);
+
         List<GetUsersAverageResponseTimeDto> usersAverageResponseTime = new ArrayList<>();
 
         List<String> mondayBoardIds = mondayConfigurationsBoardsRepository.findByMondayConfiguration(config).stream()
             .map(MondayConfigurationsBoards::getMondayBoard)
             .map(MondayBoards::getId)
-            .collect(Collectors.toList());
+            .toList();
 
         for (String boardId : mondayBoardIds) {
             List<MondayUsers> mondayUsers = mondayBoardsSubscribersRepository.findByMondayBoardId(boardId).stream()
                 .map(MondayBoardsSubscribers::getMondayUser)
-                .collect(Collectors.toList());
+                .toList();
 
-            MondayBoards mondayBoard = mondayBoardsRepository.findById(boardId).get();
-
-            Map<String, List<Integer>> userResponseTimeMap = new HashMap<>();
-            Map<String, String> userNameIdMap = new HashMap<>();
-            for (MondayUsers user : mondayUsers) {
-                userResponseTimeMap.put(user.getName(), new ArrayList<>());
-                userNameIdMap.put(user.getName(), user.getId());
-            }
-
+            Map<String, String> userNameIdMap = initiateUserNameIdMap(mondayUsers);
+            MondayBoards mondayBoard = getMondayBoardById(boardId);
             List<MondayUpdates> mondayUpdates;
             if (period.equals(ResponseTimeType.DAILY)) {
                 mondayUpdates = mondayUpdatesRepository.findByMondayItem_MondayBoardIdAndCreatedAtAfter(boardId,
@@ -135,46 +180,9 @@ public class MondayService {
                     Timestamp.valueOf(LocalDateTime.now().minusDays(30)));
             }
 
-            for (MondayUpdates update : mondayUpdates) {
-                List<String> mentionedUsers = getMentionedUsersInString(update.getContent());
-                if (!mentionedUsers.isEmpty()) {
-                    Date startDate = update.getCreatedAt();
-                    List<String> leftUsers = new ArrayList<>(mentionedUsers);
-                    List<MondayComments> mondayComments = mondayCommentsRepository.findByMondayUpdate(update);
-                    for (MondayComments comment : mondayComments) {
-                        if (mentionedUsers.contains(comment.getMondayCreatorUser().getName()) && leftUsers.contains(comment.getMondayCreatorUser().getName())){
-                            int diffSeconds = calculateResponseTime(startDate, comment.getCreatedAt());
+            Map<String, List<Integer>> userResponseTimeMap = initiateUserResponseTimeMap(mondayUsers, mondayUpdates);
 
-                            // 현재 삭제된 유저의 경우에는 현재 구독자로 남아있지 않으며 언급은 되어있을 수 있기 때문에 체크
-                            if (userResponseTimeMap.containsKey(comment.getMondayCreatorUser().getName())) {
-                                userResponseTimeMap.get(comment.getMondayCreatorUser().getName()).add(diffSeconds);
-                                leftUsers.remove(comment.getMondayCreatorUser().getName());
-                            }
-                        }
-                    }
-                }
-            }
-
-            List<ResponseTimeOfUser> responseTimeOfUsers = new ArrayList<>();
-
-            for (String userId : userResponseTimeMap.keySet()) {
-                List<Integer> responseTimes = userResponseTimeMap.get(userId);
-                // 응답한 기록이 없는 경우 분석 불가
-                if (responseTimes.isEmpty()) {
-                    continue;
-                }
-
-                int sum = 0;
-                for (int responseTime : responseTimes) {
-                    sum += responseTime;
-                }
-                int average = sum / responseTimes.size();
-                responseTimeOfUsers.add(ResponseTimeOfUser.builder()
-                    .userId(userNameIdMap.get(userId))
-                    .username(userId)
-                    .averageResponseTime(average)
-                    .build());
-            }
+            List<ResponseTimeOfUser> responseTimeOfUsers = getAvgResponseTimeOfUsers(userNameIdMap, userResponseTimeMap);
 
             usersAverageResponseTime.add(GetUsersAverageResponseTimeDto.builder()
                 .boardId(mondayBoard.getId())
@@ -186,71 +194,51 @@ public class MondayService {
         return usersAverageResponseTime;
     }
 
+    private List<ResponseTimeOfUser> getAvgResponseTimeOfUsers(Map<String, String> userNameIdMap, Map<String, List<Integer>> userResponseTimeMap) {
+        List<ResponseTimeOfUser> responseTimeOfUsers = new ArrayList<>();
+        for (String userId : userResponseTimeMap.keySet()) {
+            List<Integer> responseTimes = userResponseTimeMap.get(userId);
+            // 응답한 기록이 없는 경우 분석 불가
+            if (responseTimes.isEmpty()) {
+                continue;
+            }
+
+            int sum = 0;
+            for (int responseTime : responseTimes) {
+                sum += responseTime;
+            }
+            int average = sum / responseTimes.size();
+            responseTimeOfUsers.add(ResponseTimeOfUser.builder()
+                .userId(userNameIdMap.get(userId))
+                .username(userId)
+                .averageResponseTime(average)
+                .build());
+        }
+        return responseTimeOfUsers;
+    }
+
     public List<GetUsersAverageResponseTimeDto> getUsersAverageResponseTime(Long id) {
-        MondayConfigurations config = mondayConfigurationsRepository.findById(id).get();
+        MondayConfigurations config = getMondayConfigById(id);
         List<GetUsersAverageResponseTimeDto> usersAverageResponseTime = new ArrayList<>();
 
         List<String> mondayBoardIds = mondayConfigurationsBoardsRepository.findByMondayConfiguration(config).stream()
             .map(MondayConfigurationsBoards::getMondayBoard)
             .map(MondayBoards::getId)
-            .collect(Collectors.toList());
+            .toList();
 
         for (String boardId : mondayBoardIds) {
             List<MondayUsers> mondayUsers = mondayBoardsSubscribersRepository.findByMondayBoardId(boardId).stream()
                 .map(MondayBoardsSubscribers::getMondayUser)
-                .collect(Collectors.toList());
+                .toList();
 
-            MondayBoards mondayBoard = mondayBoardsRepository.findById(boardId).get();
+            MondayBoards mondayBoard = getMondayBoardById(boardId);
 
-            Map<String, List<Integer>> userResponseTimeMap = new HashMap<>();
-            Map<String, String> userNameIdMap = new HashMap<>();
-            for (MondayUsers user : mondayUsers) {
-                userResponseTimeMap.put(user.getName(), new ArrayList<>());
-                userNameIdMap.put(user.getName(), user.getId());
-            }
-
+            Map<String, String> userNameIdMap = initiateUserNameIdMap(mondayUsers);
             List<MondayUpdates> mondayUpdates = mondayUpdatesRepository.findByMondayBoardId(boardId);
 
-            for (MondayUpdates update : mondayUpdates) {
-                List<String> mentionedUsers = getMentionedUsersInString(update.getContent());
-                if (!mentionedUsers.isEmpty()) {
-                    Date startDate = update.getCreatedAt();
-                    List<String> leftUsers = new ArrayList<>(mentionedUsers);
-                    List<MondayComments> mondayComments = mondayCommentsRepository.findByMondayUpdate(update);
-                    for (MondayComments comment : mondayComments) {
-                        if (mentionedUsers.contains(comment.getMondayCreatorUser().getName()) && leftUsers.contains(comment.getMondayCreatorUser().getName())){
-                            int diffSeconds = calculateResponseTime(startDate, comment.getCreatedAt());
+            Map<String, List<Integer>> userResponseTimeMap = initiateUserResponseTimeMap(mondayUsers, mondayUpdates);
 
-                            // 현재 삭제된 유저의 경우에는 현재 구독자로 남아있지 않으며 언급은 되어있을 수 있기 때문에 체크
-                            if (userResponseTimeMap.containsKey(comment.getMondayCreatorUser().getName())) {
-                                userResponseTimeMap.get(comment.getMondayCreatorUser().getName()).add(diffSeconds);
-                                leftUsers.remove(comment.getMondayCreatorUser().getName());
-                            }
-                        }
-                    }
-                }
-            }
-
-            List<ResponseTimeOfUser> responseTimeOfUsers = new ArrayList<>();
-
-            for (String userId : userResponseTimeMap.keySet()) {
-                List<Integer> responseTimes = userResponseTimeMap.get(userId);
-                // 응답한 기록이 없는 경우 분석 불가
-                if (responseTimes.isEmpty()) {
-                    continue;
-                }
-
-                int sum = 0;
-                for (int responseTime : responseTimes) {
-                    sum += responseTime;
-                }
-                int average = sum / responseTimes.size();
-                responseTimeOfUsers.add(ResponseTimeOfUser.builder()
-                    .userId(userNameIdMap.get(userId))
-                    .username(userId)
-                    .averageResponseTime(average)
-                    .build());
-            }
+            List<ResponseTimeOfUser> responseTimeOfUsers = getAvgResponseTimeOfUsers(userNameIdMap, userResponseTimeMap);
 
             usersAverageResponseTime.add(GetUsersAverageResponseTimeDto.builder()
                 .boardId(mondayBoard.getId())
@@ -263,9 +251,9 @@ public class MondayService {
     }
 
     public List<GetUserExpiredItemDto> getUsersExpiredItem(Long configId) {
-        List<MondayBoards> boards = mondayConfigurationsBoardsRepository.findByMondayConfiguration(mondayConfigurationsRepository.findById(configId).get()).stream()
+        List<MondayBoards> boards = mondayConfigurationsBoardsRepository.findByMondayConfiguration(getMondayConfigById(configId)).stream()
             .map(MondayConfigurationsBoards::getMondayBoard)
-            .collect(Collectors.toList());
+            .toList();
 
         List<GetUserExpiredItemDto> userExpiredItems = new ArrayList<>();
 
@@ -277,14 +265,14 @@ public class MondayService {
             List<MondayUsers> mondayUsers = mondayBoardsSubscribersRepository.findByMondayBoardId(
                     board.getId()).stream()
                 .map(MondayBoardsSubscribers::getMondayUser)
-                .collect(Collectors.toList());
+                .toList();
 
             Map<String, Integer > userExpiredItemCount = new HashMap<>();
 
             for (MondayUsers user : mondayUsers) {
                 List<MondayItems> mondayItems = mondayAssigneesRepository.findByMondayUserAndMondayItem_StatusAndMondayItem_DeadlineToLessThanAndMondayItem_MondayBoard(user, "미완료", new Date(), board).stream()
                     .map(MondayAssignees::getMondayItem)
-                    .collect(Collectors.toList());
+                    .toList();
 
                 userExpiredItemCount.put(user.getName(), mondayItems.size());
             }
@@ -306,7 +294,7 @@ public class MondayService {
 
     public List<GetAllMondayUsersDto> getAllMondayUsers(String apiKey) {
         GraphQLRequest userRequest = GraphQLRequest.builder()
-            .query(ModnayQuery.MONDAY_GET_ALL_USERS.getQuery())
+            .query(MondayQuery.MONDAY_GET_ALL_USERS.getQuery())
             .build();
         MondayGetAllUsersRes response = mondayWebClient.post()
             .bodyValue(userRequest.getRequestBody())
@@ -314,6 +302,10 @@ public class MondayService {
             .retrieve()
             .bodyToMono(MondayGetAllUsersRes.class)
             .block();
+
+        if (response == null || response.getData() == null) {
+            throw new BaseException(MONDAY_SERVER_ERROR);
+        }
 
         return response.getData().getUsers().stream()
             .map(GetAllMondayUsersDto::from)
@@ -325,7 +317,7 @@ public class MondayService {
         int page = 1;
         while (true) {
             GraphQLRequest boardRequest = GraphQLRequest.builder()
-                .query(String.format(ModnayQuery.MONDAY_GET_ALL_BOARDS.getQuery(), page))
+                .query(String.format(MondayQuery.MONDAY_GET_ALL_BOARDS.getQuery(), page))
                 .build();
             MondayGetAllBoardsRes res = mondayWebClient.post()
                 .bodyValue(boardRequest.getRequestBody())
@@ -335,13 +327,17 @@ public class MondayService {
                 .doOnError(e -> log.error("error : {}", e.getMessage()))
                 .block();
 
-            if (res.getData().getBoards().size() == 0) {
+            if (res == null) {
+                throw new BaseException(MONDAY_SERVER_ERROR);
+            }
+
+            if (res.getData().getBoards().isEmpty()) {
                 break;
             }
 
             response.addAll(res.getData().getBoards().stream()
                 .map(GetAllMondayBoardsDto::from)
-                .collect(Collectors.toList()));
+                .toList());
             page++;
         }
 
@@ -349,8 +345,7 @@ public class MondayService {
     }
 
     public void syncUsers(Long id) {
-        MondayConfigurations mondayConfiguration = mondayConfigurationsRepository.findById(id)
-            .get();
+        MondayConfigurations mondayConfiguration = getMondayConfigById(id);
         List<GetAllMondayUsersDto> mondayUsers = getAllMondayUsers(mondayConfiguration.getApiKey());
         for (GetAllMondayUsersDto user : mondayUsers) {
             MondayUsers savedUser = mondayUsersRepository.save(MondayUsers.builder()
@@ -375,14 +370,13 @@ public class MondayService {
     }
 
     public void syncItemsByBoardId(String boardId, String apiKey) throws JsonProcessingException {
-        MondayBoards board = mondayBoardsRepository.findById(boardId)
-            .get();
+        MondayBoards board = getMondayBoardById(boardId);
         String cursor = null;
         do {
             GraphQLRequest itemsRequest = cursor == null ? GraphQLRequest.builder()
-                .query(String.format(ModnayQuery.MONDAY_GET_ALL_ITEMS_BY_BOARDS_WITHOUT_CURSOR.getQuery(), boardId))
+                .query(String.format(MondayQuery.MONDAY_GET_ALL_ITEMS_BY_BOARDS_WITHOUT_CURSOR.getQuery(), boardId))
                 .build() : GraphQLRequest.builder()
-                .query(String.format(ModnayQuery.MONDAY_GET_ALL_ITEMS_BY_BOARDS_WITH_CURSOR.getQuery(), boardId, cursor))
+                .query(String.format(MondayQuery.MONDAY_GET_ALL_ITEMS_BY_BOARDS_WITH_CURSOR.getQuery(), boardId, cursor))
                 .build();
             GetAllMondayItemsWIthCursorRes items = mondayWebClient.post()
                 .bodyValue(itemsRequest.getRequestBody())
@@ -390,6 +384,10 @@ public class MondayService {
                 .retrieve()
                 .bodyToMono(GetAllMondayItemsWIthCursorRes.class)
                 .block();
+
+            if (items == null || items.getData() == null) {
+                throw new BaseException(MONDAY_SERVER_ERROR);
+            }
 
             for (GetAllMondayItemsWIthCursorRes.Item item : items.getData().getBoards().get(0).getItems_page().getItems()) {
                 MondayItems savedItem = mondayItemsRepository.save(MondayItems.builder()
@@ -406,10 +404,13 @@ public class MondayService {
                             MondayAssigneeInfo.class);
 
                         for (MondayAssigneeInfo.Person person : assigneeInfo.getPersonsAndTeams()) {
-                            MondayUsers assignee = mondayUsersRepository.findById(person.getId().toString()).get();
+                            Optional<MondayUsers> assignee = mondayUsersRepository.findById(person.getId().toString());
+                            if (assignee.isEmpty()) {
+                                continue;
+                            }
                             mondayAssigneesRepository.save(MondayAssignees.builder()
                                 .mondayItem(savedItem)
-                                .mondayUser(assignee)
+                                .mondayUser(assignee.get())
                                 .build());
                         }
 
@@ -444,11 +445,16 @@ public class MondayService {
         } while (cursor != null);
     }
 
-    public void syncBoardsWithItems(Long id)
-        throws JsonProcessingException {
-        MondayConfigurations mondayConfiguration = mondayConfigurationsRepository.findById(id)
-            .get();
-        List<GetAllMondayBoardsDto> mondayBoards = getAllMondayBoards(mondayConfiguration.getApiKey());
+    public void syncBoardsWithItems(Long id) {
+        MondayConfigurations mondayConfiguration = getMondayConfigById(id);
+        List<GetAllMondayBoardsDto> mondayBoards;
+        try{
+            mondayBoards = getAllMondayBoards(mondayConfiguration.getApiKey());
+        }catch (Exception e) {
+            log.error("getAllMondayBoards error : {}", e.getMessage());
+            return;
+        }
+
         for (GetAllMondayBoardsDto board : mondayBoards) {
             MondayBoards savedBoard = mondayBoardsRepository.save(MondayBoards.builder()
                 .id(board.getId())
@@ -467,20 +473,22 @@ public class MondayService {
                     .mondayUser(user)
                     .build());
             }
-
-            syncItemsByBoardId(savedBoard.getId(), mondayConfiguration.getApiKey());
+            try{
+                syncItemsByBoardId(savedBoard.getId(), mondayConfiguration.getApiKey());
+            }catch(Exception e) {
+                log.error("syncItemsByBoardId error : {}", e.getMessage());
+            }
         }
     }
 
     public void syncUpdatesAndComments(Long id) {
-        MondayConfigurations mondayConfiguration = mondayConfigurationsRepository.findById(id)
-            .get();
+        MondayConfigurations mondayConfiguration = getMondayConfigById(id);
         String apiKey = mondayConfiguration.getApiKey();
 
         int page = 1;
         while (true) {
             GraphQLRequest updateRequest = GraphQLRequest.builder()
-                .query(String.format(ModnayQuery.MODNAY_GET_ALL_UPDDATES_WITH_COMMENTS_PAGE.getQuery(), page))
+                .query(String.format(MondayQuery.MONDAY_GET_ALL_UPDATES_WITH_COMMENTS_PAGE.getQuery(), page))
                 .build();
             MondayGetAllUpdatesWithCommentRes updates = mondayWebClient.post()
                 .bodyValue(updateRequest.getRequestBody())
@@ -489,27 +497,33 @@ public class MondayService {
                 .bodyToMono(MondayGetAllUpdatesWithCommentRes.class)
                 .block();
 
-            if (updates.getData().getUpdates().size() == 0) {
+            if (updates == null || updates.getData() == null) {
+                throw new BaseException(MONDAY_SERVER_ERROR);
+            }
+
+            if (updates.getData().getUpdates().isEmpty()) {
                 break;
             }
 
             for (MondayGetAllUpdatesWithCommentRes.Update update : updates.getData().getUpdates()) {
                 MondayItems item = mondayItemsRepository.findByUniqueId(update.getItem_id()).get(0);
+                Optional<MondayUsers> creator = mondayUsersRepository.findById(update.getCreator_id());
                 MondayUpdates savedUpdate = mondayUpdatesRepository.save(MondayUpdates.builder()
                     .id(update.getId())
                     .mondayItem(item)
-                    .mondayCreatorUser(mondayUsersRepository.findById(update.getCreator_id()).get())
+                    .mondayCreatorUser(creator.orElse(null))
                     .createdAt(update.getCreated_at())
                     .content(update.getText_body())
                     .updatedAt(update.getUpdated_at())
                     .build());
 
                 for (MondayGetAllUpdatesWithCommentRes.Reply reply : update.getReplies()) {
+                    Optional<MondayUsers> replyCreator = mondayUsersRepository.findById(reply.getCreator_id());
                     mondayCommentsRepository.save(MondayComments.builder()
                         .id(reply.getId())
                         .mondayUpdate(savedUpdate)
                         .mondayCreatorUser(
-                            mondayUsersRepository.findById(reply.getCreator_id()).get())
+                            replyCreator.orElse(null))
                         .createdAt(reply.getCreated_at())
                         .updatedAt(reply.getUpdated_at())
                         .content(reply.getText_body())
@@ -524,14 +538,18 @@ public class MondayService {
         switch (actionWebhookDto.getType()) {
             case "create_update": case "edit_update":
                 MondayConfigurations mondayConfiguration = mondayConfigurationsBoardsRepository.findByMondayBoard_Id(actionWebhookDto.getBoardId()).get(0).getMondayConfiguration();
-                patchUpdateByUpdateId(mondayConfiguration.getApiKey(), actionWebhookDto.getUpdateId());
+                try{
+                    patchUpdateByUpdateId(mondayConfiguration.getApiKey(), actionWebhookDto.getUpdateId());
+                }catch(Exception e) {
+                    log.error("actionWebhook error : {}", e.getMessage());
+                }
                 break;
         }
     }
 
     public void patchUpdateByUpdateId(String apiKey, String id) {
         GraphQLRequest updateRequest = GraphQLRequest.builder()
-            .query(String.format(ModnayQuery.MONDAY_GET_UPDATE_BY_ID.getQuery(), id))
+            .query(String.format(MondayQuery.MONDAY_GET_UPDATE_BY_ID.getQuery(), id))
             .build();
         MondayGetUpdateByIdRes update = mondayWebClient.post()
             .bodyValue(updateRequest.getRequestBody())
@@ -539,21 +557,27 @@ public class MondayService {
             .retrieve()
             .bodyToMono(MondayGetUpdateByIdRes.class)
             .block();
+
+        if (update == null || update.getData() == null) {
+            throw new BaseException(MONDAY_SERVER_ERROR);
+        }
         MondayItems item = mondayItemsRepository.findByUniqueId(update.getData().getUpdates().get(0).getItem_id()).get(0);
+        Optional<MondayUsers> user = mondayUsersRepository.findById(update.getData().getUpdates().get(0).getCreator_id());
         MondayUpdates savedUpdate = mondayUpdatesRepository.save(MondayUpdates.builder()
             .id(id)
             .mondayItem(item)
-            .mondayCreatorUser(mondayUsersRepository.findById(update.getData().getUpdates().get(0).getCreator_id()).get())
+            .mondayCreatorUser(user.orElse(null))
             .createdAt(update.getData().getUpdates().get(0).getCreated_at())
             .content(update.getData().getUpdates().get(0).getText_body())
             .updatedAt(update.getData().getUpdates().get(0).getUpdated_at())
             .build());
 
         for (MondayGetUpdateByIdRes.Reply reply : update.getData().getUpdates().get(0).getReplies()) {
+            Optional<MondayUsers> replyCreator = mondayUsersRepository.findById(reply.getCreator_id());
             mondayCommentsRepository.save(MondayComments.builder()
                 .id(reply.getId())
                 .mondayUpdate(savedUpdate)
-                .mondayCreatorUser(mondayUsersRepository.findById(reply.getCreator_id()).get())
+                .mondayCreatorUser(replyCreator.orElse(null))
                 .createdAt(reply.getCreated_at())
                 .updatedAt(reply.getUpdated_at())
                 .content(reply.getText_body())
@@ -563,13 +587,22 @@ public class MondayService {
 
     public void syncAvgResponseTimeEachUser(List<Long> mondayConfigIds, ResponseTimeType period) {
         for (Long id : mondayConfigIds) {
-            List<GetUsersAverageResponseTimeDto> usersAverageResponseTime = getUsersAverageResponseTime(id, period);
+            List<GetUsersAverageResponseTimeDto> usersAverageResponseTime;
+            try{
+                usersAverageResponseTime = getUsersAverageResponseTime(id, period);
+            }catch(Exception e) {
+                log.error("syncAvgResponseTimeEachUser error : {}", e.getMessage());
+                continue;
+            }
             for (GetUsersAverageResponseTimeDto dto : usersAverageResponseTime) {
-                MondayBoards board = mondayBoardsRepository.findById(dto.getBoardId()).get();
+                MondayBoards board = getMondayBoardById(dto.getBoardId());
                 for (ResponseTimeOfUser responseTimeOfUser : dto.getResponseTimeOfUsers()) {
-                    MondayUsers user = mondayUsersRepository.findById(responseTimeOfUser.getUserId()).get();
+                    Optional<MondayUsers> user = mondayUsersRepository.findById(responseTimeOfUser.getUserId());
+                    if (user.isEmpty()) {
+                        continue;
+                    }
                     MondayAvgResponseTimeEachUser responseTime = MondayAvgResponseTimeEachUser.builder()
-                        .mondayUser(user)
+                        .mondayUser(user.get())
                         .mondayBoard(board)
                         .type(period.name())
                         .avgResponseTime(responseTimeOfUser.getAverageResponseTime())
@@ -582,13 +615,13 @@ public class MondayService {
     }
 
     public List<GetUsersAverageResponseTimeDto> getUsersAverageResponseTimePeriod(Long id, ResponseTimeType type) {
-        MondayConfigurations config = mondayConfigurationsRepository.findById(id).get();
+        MondayConfigurations config = getMondayConfigById(id);
         List<GetUsersAverageResponseTimeDto> usersAverageResponseTime = new ArrayList<>();
 
         List<String> mondayBoardIds = mondayConfigurationsBoardsRepository.findByMondayConfiguration(config).stream()
             .map(MondayConfigurationsBoards::getMondayBoard)
             .map(MondayBoards::getId)
-            .collect(Collectors.toList());
+            .toList();
 
         for (String boardId : mondayBoardIds) {
             List<MondayAvgResponseTimeEachUser> avgResponseTimes = mondayAvgResponseTimeEachUserRepository.findByMondayBoardIdAndType(boardId, type.name());
@@ -600,7 +633,7 @@ public class MondayService {
                     .build())
                 .collect(Collectors.toList());
 
-            MondayBoards mondayBoard = mondayBoardsRepository.findById(boardId).get();
+            MondayBoards mondayBoard = getMondayBoardById(boardId);
             usersAverageResponseTime.add(GetUsersAverageResponseTimeDto.builder()
                 .boardId(mondayBoard.getId())
                 .boardName(mondayBoard.getName())
@@ -612,20 +645,20 @@ public class MondayService {
     }
 
     public List<GetUserNumberOfChangesDto> getUsersNumberOfChanges(Long id) {
-        MondayConfigurations config = mondayConfigurationsRepository.findById(id).get();
+        MondayConfigurations config = getMondayConfigById(id);
         List<GetUserNumberOfChangesDto> usersNumberOfChanges = new ArrayList<>();
 
         List<String> mondayBoardIds = mondayConfigurationsBoardsRepository.findByMondayConfiguration(config).stream()
             .map(MondayConfigurationsBoards::getMondayBoard)
             .map(MondayBoards::getId)
-            .collect(Collectors.toList());
+            .toList();
 
         for (String boardId : mondayBoardIds) {
             List<MondayUsers> mondayUsers = mondayBoardsSubscribersRepository.findByMondayBoardId(boardId).stream()
                 .map(MondayBoardsSubscribers::getMondayUser)
-                .collect(Collectors.toList());
+                .toList();
 
-            MondayBoards mondayBoard = mondayBoardsRepository.findById(boardId).get();
+            MondayBoards mondayBoard = getMondayBoardById(boardId);
 
             Map<String, Integer> userChangeCount = new HashMap<>();
             for (MondayUsers user : mondayUsers) {
@@ -684,10 +717,10 @@ public class MondayService {
         syncUsers(mondayConfiguration.getId());
         try{
             syncBoardsWithItems(mondayConfiguration.getId());
-        }catch (JsonProcessingException e) {
-            log.error("syncBoardsWithItems error : {}", e.getMessage());
+            syncUpdatesAndComments(mondayConfiguration.getId());
+        }catch (Exception e) {
+            log.error("registerMondayConfiguration error : {}", e.getMessage());
         }
-        syncUpdatesAndComments(mondayConfiguration.getId());
 
         return mondayConfiguration.getId();
     }

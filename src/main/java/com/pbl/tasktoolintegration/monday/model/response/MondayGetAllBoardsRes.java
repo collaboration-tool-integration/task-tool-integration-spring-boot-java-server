@@ -1,8 +1,7 @@
-package com.pbl.tasktoolintegration.monday.model;
+package com.pbl.tasktoolintegration.monday.model.response;
 
 import java.util.Date;
 import java.util.List;
-import lombok.Builder;
 import lombok.Data;
 
 @Data
