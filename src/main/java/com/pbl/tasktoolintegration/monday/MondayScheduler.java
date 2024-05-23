@@ -1,6 +1,5 @@
 package com.pbl.tasktoolintegration.monday;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.pbl.tasktoolintegration.monday.entity.ResponseTimeType;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +12,7 @@ public class MondayScheduler {
     private final MondayService mondayService;
 
     @Scheduled(fixedRate = 1000 * 60 * 3)
-    public void syncMondayDate() throws JsonProcessingException {
+    public void syncMondayDate() {
         List<Long> mondayConfigIds = mondayService.getMondayConfigIds();
 
         for (Long mondayConfigId : mondayConfigIds) {

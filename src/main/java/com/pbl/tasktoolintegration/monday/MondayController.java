@@ -51,7 +51,7 @@ public class MondayController {
                 .map(GetUserResponseTimeRes::from)
                 .toList();
 
-            return new ResponseEntity(response, HttpStatus.OK);
+            return new ResponseEntity<>(response, HttpStatus.OK);
         }
 
         List<GetUsersAverageResponseTimeDto> usersAverageResponseTime = mondayService.getUsersAverageResponseTime(id);
@@ -60,7 +60,7 @@ public class MondayController {
             .map(GetUserResponseTimeRes::from)
             .toList();
 
-        return new ResponseEntity(response, HttpStatus.OK);
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
     @GetMapping("/expired-item")
@@ -72,7 +72,7 @@ public class MondayController {
             .map(GetUserExpiredItemRes::from)
             .toList();
 
-        return new ResponseEntity(response, HttpStatus.OK);
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
     @GetMapping("/number-of-changes")
@@ -83,7 +83,7 @@ public class MondayController {
             .map(GetUserNumberOfChangesRes::from)
             .toList();
 
-        return new ResponseEntity(response, HttpStatus.OK);
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
     @PostMapping("/monday/webhook/update")

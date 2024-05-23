@@ -2,10 +2,7 @@ package com.pbl.tasktoolintegration.monday.util;
 
 import com.pbl.tasktoolintegration.monday.entity.MondayCommentHistory;
 import com.pbl.tasktoolintegration.monday.entity.MondayComments;
-import com.pbl.tasktoolintegration.monday.entity.MondayUpdateHistory;
-import com.pbl.tasktoolintegration.monday.entity.MondayUpdates;
 import com.pbl.tasktoolintegration.monday.repository.MondayCommentHistoryRepository;
-import com.pbl.tasktoolintegration.monday.repository.MondayUpdateHistoryRepository;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import java.sql.Timestamp;
