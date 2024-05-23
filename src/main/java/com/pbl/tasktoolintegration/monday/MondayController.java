@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@RestController
+@RestController("/monday")
 @RequiredArgsConstructor
 @Slf4j
 public class MondayController {
@@ -86,7 +86,7 @@ public class MondayController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    @PostMapping("/monday/webhook/update")
+    @PostMapping("/webhook/update")
     public ResponseEntity<MondayWebhookRes> catchUpdateWebhook(@RequestBody CatchWebhookReq catchWebhookReq) {
         if (catchWebhookReq.getEvent() != null) {
             ActionWebhookDto actionWebhookDto = ActionWebhookDto.from(catchWebhookReq.getEvent());
