@@ -5,9 +5,13 @@ import com.pbl.tasktoolintegration.monday.model.ActionWebhookDto;
 import com.pbl.tasktoolintegration.monday.model.CatchWebhookReq;
 import com.pbl.tasktoolintegration.monday.model.GetUserExpiredItemDto;
 import com.pbl.tasktoolintegration.monday.model.GetUserExpiredItemRes;
+import com.pbl.tasktoolintegration.monday.model.GetUserNumberOfChangesDto;
+import com.pbl.tasktoolintegration.monday.model.GetUserNumberOfChangesRes;
 import com.pbl.tasktoolintegration.monday.model.GetUserResponseTimeRes;
 import com.pbl.tasktoolintegration.monday.model.GetUsersAverageResponseTimeDto;
 import com.pbl.tasktoolintegration.monday.model.MondayWebhookRes;
+import com.pbl.tasktoolintegration.monday.model.RegisterMondayConfigurationReq;
+import com.pbl.tasktoolintegration.monday.model.RegisterMondayConfigurationRes;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +32,15 @@ public class MondayController {
     @GetMapping
     public String test() {
         return "Test!";
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<RegisterMondayConfigurationRes> registerMondayConfiguration(@RequestBody RegisterMondayConfigurationReq registerMondayConfigurationReq) {
+        Long savedConfigurationId = mondayService.registerMondayConfiguration(registerMondayConfigurationReq.getApiKey());
+        RegisterMondayConfigurationRes response = RegisterMondayConfigurationRes.builder()
+            .configurationId(savedConfigurationId)
+            .build();
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
     @GetMapping("/response-time")
@@ -62,8 +75,19 @@ public class MondayController {
         return new ResponseEntity(response, HttpStatus.OK);
     }
 
-    @PostMapping("/monday/webhook")
-    public ResponseEntity<MondayWebhookRes> catchWebhook(@RequestBody CatchWebhookReq catchWebhookReq) {
+    @GetMapping("/number-of-changes")
+    public ResponseEntity<List<GetUserNumberOfChangesRes>> getUserNumberOfChanges(@RequestParam Long id) {
+        List<GetUserNumberOfChangesDto> usersNumberOfChanges = mondayService.getUsersNumberOfChanges(id);
+
+        List<GetUserNumberOfChangesRes> response = usersNumberOfChanges.stream()
+            .map(GetUserNumberOfChangesRes::from)
+            .toList();
+
+        return new ResponseEntity(response, HttpStatus.OK);
+    }
+
+    @PostMapping("/monday/webhook/update")
+    public ResponseEntity<MondayWebhookRes> catchUpdateWebhook(@RequestBody CatchWebhookReq catchWebhookReq) {
         if (catchWebhookReq.getEvent() != null) {
             ActionWebhookDto actionWebhookDto = ActionWebhookDto.from(catchWebhookReq.getEvent());
             mondayService.actionWebhook(actionWebhookDto);

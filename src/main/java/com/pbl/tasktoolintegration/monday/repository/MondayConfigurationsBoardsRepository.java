@@ -10,4 +10,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface MondayConfigurationsBoardsRepository extends JpaRepository<MondayConfigurationsBoards, MondayConfigurationsBoardsId> {
     List<MondayConfigurationsBoards> findByMondayConfiguration(
         MondayConfigurations mondayConfiguration);
+
+    List<MondayConfigurationsBoards> findByMondayBoard_Id(String boardId);
 }

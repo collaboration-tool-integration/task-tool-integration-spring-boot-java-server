@@ -15,20 +15,22 @@ public class MondayScheduler {
     @Scheduled(fixedRate = 1000 * 60 * 3)
     public void syncMondayDate() throws JsonProcessingException {
         List<Long> mondayConfigIds = mondayService.getMondayConfigIds();
-        mondayService.syncUsers(mondayConfigIds);
-        mondayService.syncBoardsWithItems(mondayConfigIds);
-        mondayService.syncUpdatesAndComments(mondayConfigIds);
+
+        for (Long mondayConfigId : mondayConfigIds) {
+            mondayService.syncUsers(mondayConfigId);
+            mondayService.syncBoardsWithItems(mondayConfigId);
+        }
     }
 
 //    @Scheduled(fixedRate = 1000 * 60 * 5)
-    @Scheduled(fixedRate = 1000 * 60 * 60 * 24 * 30)
+    @Scheduled(cron = "0 0 0 1 * ?")
     public void syncMondayAvgResponseTimeEachUserMonthly() {
         List<Long> mondayConfigIds = mondayService.getMondayConfigIds();
         mondayService.syncAvgResponseTimeEachUser(mondayConfigIds, ResponseTimeType.MONTHLY);
     }
 
 //    @Scheduled(fixedRate = 1000 * 60 * 5)
-    @Scheduled(fixedRate = 1000 * 60 * 60 * 24 * 7)
+    @Scheduled(cron = "0 0 0 * * MON")
     public void syncMondayAvgResponseTimeEachUserWeekly() {
         List<Long> mondayConfigIds = mondayService.getMondayConfigIds();
         mondayService.syncAvgResponseTimeEachUser(mondayConfigIds, ResponseTimeType.WEEKLY);
@@ -36,7 +38,7 @@ public class MondayScheduler {
 
     // 매일로 변경 필요
 //    @Scheduled(fixedRate = 1000 * 60 * 5)
-    @Scheduled(fixedRate = 1000 * 60 * 60 * 24)
+    @Scheduled(cron = "0 0 5 * * *")
     public void syncMondayAvgResponseTimeEachUserDaily() {
         List<Long> mondayConfigIds = mondayService.getMondayConfigIds();
         mondayService.syncAvgResponseTimeEachUser(mondayConfigIds, ResponseTimeType.DAILY);
