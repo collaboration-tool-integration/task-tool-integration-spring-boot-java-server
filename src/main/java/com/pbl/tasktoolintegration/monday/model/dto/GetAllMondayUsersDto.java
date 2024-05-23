@@ -1,5 +1,6 @@
-package com.pbl.tasktoolintegration.monday.model;
+package com.pbl.tasktoolintegration.monday.model.dto;
 
+import com.pbl.tasktoolintegration.monday.model.response.MondayGetAllUsersRes.User;
 import java.util.Date;
 import lombok.Builder;
 import lombok.Data;
@@ -14,7 +15,7 @@ public class GetAllMondayUsersDto {
     private String phoneNumber;
     private String title;
 
-    public static GetAllMondayUsersDto from(MondayGetAllUsersRes.User user) {
+    public static GetAllMondayUsersDto from(User user) {
         return GetAllMondayUsersDto.builder()
                 .id(user.getId())
                 .createdAt(user.getCreated_at())

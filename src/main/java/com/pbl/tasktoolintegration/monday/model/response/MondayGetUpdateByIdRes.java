@@ -1,11 +1,11 @@
-package com.pbl.tasktoolintegration.monday.model;
+package com.pbl.tasktoolintegration.monday.model.response;
 
 import java.util.Date;
 import java.util.List;
 import lombok.Data;
 
 @Data
-public class MondayGetAllUpdatesWithCommentRes {
+public class MondayGetUpdateByIdRes {
     private Data data;
 
     @lombok.Data
@@ -16,7 +16,6 @@ public class MondayGetAllUpdatesWithCommentRes {
     @lombok.Data
     public static class Update {
         private String item_id;
-        private String id;
         private String creator_id;
         private Date created_at;
         private String text_body;

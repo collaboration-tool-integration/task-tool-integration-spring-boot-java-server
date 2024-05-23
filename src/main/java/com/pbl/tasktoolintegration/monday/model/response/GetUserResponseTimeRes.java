@@ -1,5 +1,6 @@
-package com.pbl.tasktoolintegration.monday.model;
+package com.pbl.tasktoolintegration.monday.model.response;
 
+import com.pbl.tasktoolintegration.monday.model.dto.GetUsersAverageResponseTimeDto;
 import java.util.List;
 import lombok.Builder;
 import lombok.Data;

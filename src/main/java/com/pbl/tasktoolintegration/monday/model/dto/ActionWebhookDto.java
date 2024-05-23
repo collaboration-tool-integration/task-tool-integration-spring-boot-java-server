@@ -1,6 +1,6 @@
-package com.pbl.tasktoolintegration.monday.model;
+package com.pbl.tasktoolintegration.monday.model.dto;
 
-import com.pbl.tasktoolintegration.monday.model.CatchWebhookReq.Event;
+import com.pbl.tasktoolintegration.monday.model.request.CatchWebhookReq.Event;
 import lombok.Builder;
 import lombok.Data;
 

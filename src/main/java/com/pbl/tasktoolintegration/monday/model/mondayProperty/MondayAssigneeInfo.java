@@ -1,4 +1,4 @@
-package com.pbl.tasktoolintegration.monday.model;
+package com.pbl.tasktoolintegration.monday.model.mondayProperty;
 
 import java.util.Date;
 import java.util.List;

@@ -1,5 +1,7 @@
-package com.pbl.tasktoolintegration.monday.model;
+package com.pbl.tasktoolintegration.monday.model.dto;
 
+import com.pbl.tasktoolintegration.monday.model.response.MondayGetAllBoardsRes;
+import com.pbl.tasktoolintegration.monday.model.response.MondayGetAllBoardsRes.Board;
 import java.util.Date;
 import java.util.List;
 import lombok.Builder;
@@ -13,7 +15,7 @@ public class GetAllMondayBoardsDto {
     private Date updatedAt;
     private List<String> subscriberIds;
 
-    public static GetAllMondayBoardsDto from(MondayGetAllBoardsRes.Board board) {
+    public static GetAllMondayBoardsDto from(Board board) {
         return GetAllMondayBoardsDto.builder()
                 .id(board.getId())
                 .name(board.getName())
