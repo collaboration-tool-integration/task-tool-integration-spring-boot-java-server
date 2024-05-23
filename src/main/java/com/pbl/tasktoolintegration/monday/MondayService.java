@@ -673,6 +673,10 @@ public class MondayService {
     }
 
     public Long registerMondayConfiguration(String apiKey){
+        MondayConfigurations config = mondayConfigurationsRepository.findByApiKey(apiKey);
+        if (config != null) {
+            return config.getId();
+        }
         MondayConfigurations mondayConfiguration = mondayConfigurationsRepository.save(MondayConfigurations.builder()
             .apiKey(apiKey)
             .build());
