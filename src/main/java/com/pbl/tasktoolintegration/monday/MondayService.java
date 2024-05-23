@@ -294,7 +294,7 @@ public class MondayService {
 
     public List<GetAllMondayUsersDto> getAllMondayUsers(String apiKey) {
         GraphQLRequest userRequest = GraphQLRequest.builder()
-            .query(ModnayQuery.MONDAY_GET_ALL_USERS.getQuery())
+            .query(MondayQuery.MONDAY_GET_ALL_USERS.getQuery())
             .build();
         MondayGetAllUsersRes response = mondayWebClient.post()
             .bodyValue(userRequest.getRequestBody())
@@ -317,7 +317,7 @@ public class MondayService {
         int page = 1;
         while (true) {
             GraphQLRequest boardRequest = GraphQLRequest.builder()
-                .query(String.format(ModnayQuery.MONDAY_GET_ALL_BOARDS.getQuery(), page))
+                .query(String.format(MondayQuery.MONDAY_GET_ALL_BOARDS.getQuery(), page))
                 .build();
             MondayGetAllBoardsRes res = mondayWebClient.post()
                 .bodyValue(boardRequest.getRequestBody())
@@ -374,9 +374,9 @@ public class MondayService {
         String cursor = null;
         do {
             GraphQLRequest itemsRequest = cursor == null ? GraphQLRequest.builder()
-                .query(String.format(ModnayQuery.MONDAY_GET_ALL_ITEMS_BY_BOARDS_WITHOUT_CURSOR.getQuery(), boardId))
+                .query(String.format(MondayQuery.MONDAY_GET_ALL_ITEMS_BY_BOARDS_WITHOUT_CURSOR.getQuery(), boardId))
                 .build() : GraphQLRequest.builder()
-                .query(String.format(ModnayQuery.MONDAY_GET_ALL_ITEMS_BY_BOARDS_WITH_CURSOR.getQuery(), boardId, cursor))
+                .query(String.format(MondayQuery.MONDAY_GET_ALL_ITEMS_BY_BOARDS_WITH_CURSOR.getQuery(), boardId, cursor))
                 .build();
             GetAllMondayItemsWIthCursorRes items = mondayWebClient.post()
                 .bodyValue(itemsRequest.getRequestBody())
@@ -488,7 +488,7 @@ public class MondayService {
         int page = 1;
         while (true) {
             GraphQLRequest updateRequest = GraphQLRequest.builder()
-                .query(String.format(ModnayQuery.MODNAY_GET_ALL_UPDDATES_WITH_COMMENTS_PAGE.getQuery(), page))
+                .query(String.format(MondayQuery.MONDAY_GET_ALL_UPDATES_WITH_COMMENTS_PAGE.getQuery(), page))
                 .build();
             MondayGetAllUpdatesWithCommentRes updates = mondayWebClient.post()
                 .bodyValue(updateRequest.getRequestBody())
@@ -549,7 +549,7 @@ public class MondayService {
 
     public void patchUpdateByUpdateId(String apiKey, String id) {
         GraphQLRequest updateRequest = GraphQLRequest.builder()
-            .query(String.format(ModnayQuery.MONDAY_GET_UPDATE_BY_ID.getQuery(), id))
+            .query(String.format(MondayQuery.MONDAY_GET_UPDATE_BY_ID.getQuery(), id))
             .build();
         MondayGetUpdateByIdRes update = mondayWebClient.post()
             .bodyValue(updateRequest.getRequestBody())
