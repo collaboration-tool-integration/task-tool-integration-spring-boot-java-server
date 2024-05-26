@@ -1,4 +1,4 @@
-package com.pbl.tasktoolintegration.common.config;
+package com.pbl.tasktoolintegration.jira.common.config;
 
 import org.springframework.boot.task.ThreadPoolTaskExecutorBuilder;
 import org.springframework.context.annotation.Bean;

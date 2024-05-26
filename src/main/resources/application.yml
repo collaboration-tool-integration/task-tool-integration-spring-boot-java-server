@@ -12,7 +12,6 @@ spring:
     url: jdbc:postgresql://${DB_HOST}:5432/${DB_NAME}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
-    dbcp2:
   jpa:
     show-sql: true
     hibernate:

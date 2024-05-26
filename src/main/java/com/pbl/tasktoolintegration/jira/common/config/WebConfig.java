@@ -1,4 +1,4 @@
-package com.pbl.tasktoolintegration.common.config;
+package com.pbl.tasktoolintegration.jira.common.config;
 
 import com.pbl.tasktoolintegration.jira.config.converter.ResponseTimeUnitConverter;
 import org.springframework.context.annotation.Configuration;

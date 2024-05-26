@@ -1,6 +1,6 @@
-package com.pbl.tasktoolintegration.common.entity;
+package com.pbl.tasktoolintegration.jira.common.entity;
 
-import com.pbl.tasktoolintegration.common.Constants;
+import com.pbl.tasktoolintegration.jira.common.Constants;
 import jakarta.persistence.Column;
 import jakarta.persistence.MappedSuperclass;
 import lombok.Getter;
