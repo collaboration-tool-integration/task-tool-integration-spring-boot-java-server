@@ -1,4 +1,4 @@
-package com.pbl.tasktoolintegration.jira.config;
+package com.pbl.tasktoolintegration.jira.common.config;
 
 import com.atlassian.adf.jackson2.AdfJackson2;
 import com.atlassian.adf.model.node.Doc;

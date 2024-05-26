@@ -1,4 +1,4 @@
-package com.pbl.tasktoolintegration.jira.config.converter;
+package com.pbl.tasktoolintegration.jira.common.config.converter;
 
 import com.pbl.tasktoolintegration.jira.model.request.ResponseTimeUnit;
 import lombok.extern.slf4j.Slf4j;
