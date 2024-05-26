@@ -76,21 +76,23 @@
           - JiraController: Jira 관련 API Endpoint를 설정하는 클래스
           - JiraService: Jira 관련 비즈니스 로직을 작성하는 클래스
         - monday: Monday 연동 관련 패키지
-         - config: Monday 관련 각종 설정 클래스를 모아둔 패키지
-         - entity: Monday 관련 DB Entity 패키지
-         - exception: Monday 관련 Exception 패키지
-         - model: Monday 관련 Model 패키지
-           - dto: Monday 관련 Data Transfer Object 패키지
-           - mondayProperty: Monday 관련 Property Model 패키지
-           - request: Monday 관련 REST API 호출 시 사용하는 Request Body Object 패키지
-           - response: Monday 관련 REST API 호출 시 사용하는 Response Body Object 패키지
-         - repository: Monday 관련 Spring Data JPA Repository
-         - util: Monday 관련 Util 패키지
-         - MondayQuery: Monday REST API를 호출하기 위한 GraphQL 쿼리 클래스
-         - MondayController: Monday 관련 API Endpoint를 설정하는 클래스
-         - MondayService: Monday 관련 비즈니스 로직을 작성하는 클래스
-         - MondayScheduler: Monday 관련 스케쥴링 등록 설정 클래스
-        - TaskToolIntegrationApplication.java: 솔루션 백엔드 서버 Startpoint
+          - config: Monday 관련 각종 설정 클래스를 모아둔 패키지
+            - ObjectMapperConfig: Jackson ObjectMapper Configuration 클래스
+            - WebClientConfig: Monday 관련 API 호출을 위한 WebClient Configuration 클래스
+          - entity: Monday 관련 DB Entity 패키지
+          - exception: Monday 관련 Exception 패키지
+          - model: Monday 관련 Model 패키지
+            - dto: Monday 관련 Data Transfer Object 패키지
+            - mondayProperty: Monday 관련 Property Model 패키지
+            - request: Monday 관련 REST API 호출 시 사용하는 Request Body Object 패키지
+            - response: Monday 관련 REST API 호출 시 사용하는 Response Body Object 패키지
+          - repository: Monday 관련 Spring Data JPA Repository
+          - util: Monday 관련 Util 패키지
+          - MondayQuery: Monday REST API를 호출하기 위한 GraphQL 쿼리 클래스
+          - MondayController: Monday 관련 API Endpoint를 설정하는 클래스
+          - MondayService: Monday 관련 비즈니스 로직을 작성하는 클래스
+          - MondayScheduler: Monday 관련 스케쥴링 등록 설정 클래스
+          - TaskToolIntegrationApplication.java: 솔루션 백엔드 서버 Startpoint
   - test: 테스트 관련 패키지
 - build.gradle: Gradle에서 Build를 수행하기 위한 설정 및 각종 Dependencies 정보를 작성한 파일
 - settings.gradle: Gradle 관련 기본 설정
