@@ -15,12 +15,19 @@ spring:
   jpa:
     show-sql: true
     hibernate:
-      ddl-auto: update
       properties:
         hibernate:
           format_sql: true
       naming:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+      ddl-auto: update
+    database: postgresql
+    properties:
+      hibernate:
+        default_schema: ${TASKTOOL_SCHEMA_NAME:tasktool}
+
+
+
 server:
   port: 9090 # docker desktop과 충돌을 피하기 위해 포트 변경
 monday:
@@ -29,6 +36,19 @@ google:
   task:
     key: ${GOOGLE_TASK_KEY}
 
+jira:
+  site-url: ${JIRA_SITE_URL}
+  auth-email: ${JIRA_AUTH_EMAIL}
+  api-token: ${JIRA_API_TOKEN}
+
+logging:
+  level:
+    org:
+      springframework:
+        web:
+          filter:
+            CommonsRequestLoggingFilter: DEBUG
+    reactor.netty.http.client: DEBUG
 ---
 
 spring:
@@ -50,5 +70,4 @@ spring:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
 server:
   port: 8080
-
 ---

@@ -19,6 +19,11 @@ configurations {
 
 repositories {
     mavenCentral()
+
+    // Atlassian Maven Repository
+    maven {
+        url "https://packages.atlassian.com/mvn/maven-external/"
+    }
 }
 
 dependencies {
@@ -32,9 +37,20 @@ dependencies {
     compileOnly 'org.projectlombok:lombok'
     runtimeOnly 'org.postgresql:postgresql'
     annotationProcessor 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'io.projectreactor:reactor-test'
     testImplementation 'org.springframework.batch:spring-batch-test'
+
+
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.15.4'
+
+    // macOS Error
+    runtimeOnly 'io.netty:netty-resolver-dns-native-macos:4.1.109.Final:osx-aarch_64'
+
+    // Jira
+    implementation 'com.atlassian.adf:adf-builder-java:0.26.0'
+    implementation 'com.atlassian.adf:adf-builder-java-jackson2:0.26.0'
 }
 
 tasks.named('test') {
