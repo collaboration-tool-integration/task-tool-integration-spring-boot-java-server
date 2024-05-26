@@ -30,6 +30,11 @@ spring:
 
 server:
   port: 9090 # docker desktop과 충돌을 피하기 위해 포트 변경
+monday:
+  key: ${MONDAY_API_KEY}
+google:
+  task:
+    key: ${GOOGLE_TASK_KEY}
 
 jira:
   site-url: ${JIRA_SITE_URL}
