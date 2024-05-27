@@ -23,7 +23,7 @@
 - GraphQL Spring Web Client (https://github.com/graphql-java-kickstart/graphql-spring-webclient)
 - Atlassian ADF (Atlassian Document Format) Builder (https://bitbucket.org/atlassian/adf-builder-java/wiki/Home)
 
-## How to Use
+## Features
 
 ### Jira
 
