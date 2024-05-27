@@ -1,6 +1,6 @@
 package com.pbl.tasktoolintegration.jira;
 
-import com.pbl.tasktoolintegration.jira.config.JiraConfiguration;
+import com.pbl.tasktoolintegration.jira.common.config.JiraConfiguration;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;

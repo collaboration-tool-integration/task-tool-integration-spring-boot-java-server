@@ -18,7 +18,7 @@ import java.util.List;
 @Slf4j
 @RequiredArgsConstructor
 @RestController
-@RequestMapping("/api/jira")
+@RequestMapping("/jira")
 public class JiraController {
     private final JiraService jiraService;
 
